@@ -26,6 +26,22 @@ void main() {
     expect(find.text('CRUJEJU'), findsOneWidget);
     expect(find.byType(BrandHeaderMark), findsOneWidget);
     expect(find.text('곧, 제주에서 만나요'), findsOneWidget);
+    final guidePreview = find.byKey(
+      const ValueKey('home-guide-preview-content'),
+    );
+    final guideImage = find.byKey(const ValueKey('home-guide-preview-image'));
+    await tester.scrollUntilVisible(
+      guidePreview,
+      350,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    expect(guidePreview, findsOneWidget);
+    expect(guideImage, findsOneWidget);
+    expect(
+      tester.getSize(guideImage).height,
+      tester.getSize(guidePreview).height,
+    );
     expect(find.text('홈'), findsOneWidget);
     expect(find.text('가이드'), findsWidgets);
     expect(find.text('둘러보기'), findsOneWidget);

@@ -697,65 +697,72 @@ class _GuidePreview extends StatelessWidget {
       padding: EdgeInsets.zero,
       color: AppColors.surfaceSecondary,
       onTap: onTap,
-      child: Row(
-        children: [
-          SizedBox(
-            width: 118,
-            child: AspectRatio(
-              aspectRatio: 4 / 5,
+      child: IntrinsicHeight(
+        child: Row(
+          key: const ValueKey('home-guide-preview-content'),
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              width: 118,
               child: Image.asset(
                 guide.image,
+                key: const ValueKey('home-guide-preview-image'),
                 fit: BoxFit.cover,
-                alignment: Alignment.topCenter,
+                alignment: const Alignment(0, -0.35),
                 errorBuilder: (_, _, _) => const EmptyImageFallback(),
               ),
             ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      MetaPill(
-                        label: selected ? '제안 준비 중' : '일정 적합도 ${guide.match}%',
-                        selected: true,
-                        compact: true,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 9),
-                  Text(
-                    guide.name,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 3),
-                  RatingLabel(rating: guide.rating, reviews: guide.reviewCount),
-                  const SizedBox(height: 8),
-                  Text(
-                    '${guide.languages.skip(1).join(' · ')} · 차량 ${guide.carSeats}인',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  Text(
-                    '${formatWon(guide.price)}부터',
-                    style: Theme.of(context).textTheme.labelMedium,
-                  ),
-                ],
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        MetaPill(
+                          label: selected
+                              ? '제안 준비 중'
+                              : '일정 적합도 ${guide.match}%',
+                          selected: true,
+                          compact: true,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 9),
+                    Text(
+                      guide.name,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 3),
+                    RatingLabel(
+                      rating: guide.rating,
+                      reviews: guide.reviewCount,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${guide.languages.skip(1).join(' · ')} · 차량 ${guide.carSeats}인',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    Text(
+                      '${formatWon(guide.price)}부터',
+                      style: Theme.of(context).textTheme.labelMedium,
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          const Padding(
-            padding: EdgeInsets.only(right: 12),
-            child: Icon(
-              Icons.chevron_right_rounded,
-              color: AppColors.textTertiary,
+            const Padding(
+              padding: EdgeInsets.only(right: 12),
+              child: Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.textTertiary,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
