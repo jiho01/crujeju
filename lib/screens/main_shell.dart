@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../data/app_data.dart';
+import '../models/models.dart';
 import '../state/app_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ai_assistant_sheet.dart';
 import '../widgets/common.dart';
+import 'booking_detail_screen.dart';
 import 'explore_screen.dart';
 import 'guides_screen.dart';
 import 'home_screen.dart';
@@ -37,11 +40,29 @@ class _MainShellState extends State<MainShell> {
     });
   }
 
+  void _openBookingDetail(Guide guide) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => BookingDetailScreen(
+          guide: guide,
+          appState: widget.appState,
+          onCardRequested: _openCardApplication,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: widget.appState,
       builder: (context, _) {
+        final activeBooking = widget.appState.activeGuideBooking;
+        final activeGuide = activeBooking == null
+            ? null
+            : AppData.guides.firstWhere(
+                (guide) => guide.id == activeBooking.guideId,
+              );
         return Scaffold(
           resizeToAvoidBottomInset: _index != 2,
           body: AppPage(
@@ -51,7 +72,10 @@ class _MainShellState extends State<MainShell> {
                 HomeScreen(
                   appState: widget.appState,
                   onTabChanged: _selectTab,
-                  onCardApplicationRequested: _openCardApplication,
+                  onBookingRequested:
+                      activeBooking != null && activeGuide != null
+                      ? () => _openBookingDetail(activeGuide)
+                      : null,
                 ),
                 GuidesScreen(
                   appState: widget.appState,
@@ -68,21 +92,119 @@ class _MainShellState extends State<MainShell> {
           ),
           floatingActionButton: _index == 2
               ? null
-              : FloatingActionButton(
-                  key: const ValueKey('global-ai-assistant'),
-                  heroTag: 'global-ai-assistant',
-                  onPressed: () => showAiAssistant(context),
-                  elevation: 3,
-                  highlightElevation: 1,
-                  backgroundColor: AppColors.brand,
-                  foregroundColor: Colors.white,
-                  shape: const CircleBorder(),
-                  tooltip: 'AI 여행 도우미',
-                  child: const Icon(Icons.auto_awesome_rounded, size: 24),
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_index == 0 &&
+                        activeBooking != null &&
+                        activeGuide != null) ...[
+                      _BookingQuickAction(
+                        guide: activeGuide,
+                        booking: activeBooking,
+                        onTap: () => _openBookingDetail(activeGuide),
+                      ),
+                      const SizedBox(width: 10),
+                    ],
+                    FloatingActionButton(
+                      key: const ValueKey('global-ai-assistant'),
+                      heroTag: 'global-ai-assistant',
+                      onPressed: () => showAiAssistant(context),
+                      elevation: 3,
+                      highlightElevation: 1,
+                      backgroundColor: AppColors.brand,
+                      foregroundColor: Colors.white,
+                      shape: const CircleBorder(),
+                      tooltip: 'AI 여행 도우미',
+                      child: const Icon(Icons.auto_awesome_rounded, size: 24),
+                    ),
+                  ],
                 ),
           floatingActionButtonLocation: const _AppEndFloatLocation(),
         );
       },
+    );
+  }
+}
+
+class _BookingQuickAction extends StatelessWidget {
+  const _BookingQuickAction({
+    required this.guide,
+    required this.booking,
+    required this.onTap,
+  });
+
+  final Guide guide;
+  final GuideBooking booking;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final status = switch (booking.status) {
+      GuideBookingStatus.accepted => '예약 확정',
+      GuideBookingStatus.modified => '변경 제안',
+      _ => '확인 대기',
+    };
+    return Material(
+      key: const ValueKey('home-booking-quick-action'),
+      color: Colors.white,
+      elevation: 4,
+      shadowColor: const Color(0x30123A63),
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: SizedBox(
+          width: 184,
+          height: 56,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(13, 8, 11, 8),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: AppColors.brandWeak,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.event_available_rounded,
+                    size: 20,
+                    color: AppColors.brand,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '예약 정보',
+                        style: Theme.of(context).textTheme.labelMedium,
+                      ),
+                      Text(
+                        '${guide.name} · $status',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: AppColors.textSecondary,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  size: 18,
+                  color: AppColors.textTertiary,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

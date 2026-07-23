@@ -81,6 +81,13 @@ class AppState extends ChangeNotifier {
   int get cardBalance => _cardBalance;
   bool get initialized => _initialized;
   bool get onboardingComplete => _onboardingComplete;
+  GuideBooking? get activeGuideBooking {
+    final guideId = _selectedGuideId;
+    if (guideId == null) return null;
+    final booking = _guideBookings[guideId];
+    if (booking?.status == GuideBookingStatus.rejected) return null;
+    return booking;
+  }
 
   List<GuideMessage> messagesForGuide(String guideId) =>
       List.unmodifiable(_guideMessages[guideId] ?? const []);

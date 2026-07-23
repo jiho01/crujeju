@@ -5,20 +5,19 @@ import '../models/models.dart';
 import '../state/app_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
-import 'guide_detail_screen.dart';
 import 'place_detail_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({
     required this.appState,
     required this.onTabChanged,
-    required this.onCardApplicationRequested,
     super.key,
+    this.onBookingRequested,
   });
 
   final AppState appState;
   final ValueChanged<int> onTabChanged;
-  final VoidCallback onCardApplicationRequested;
+  final VoidCallback? onBookingRequested;
 
   @override
   Widget build(BuildContext context) {
@@ -68,43 +67,11 @@ class HomeScreen extends StatelessWidget {
                     cardBalance: appState.cardBalance,
                     cardPickupPort: appState.cruise.port,
                     onPlaces: () => onTabChanged(2),
-                    onGuide: () => onTabChanged(1),
+                    onGuide: selectedGuide != null && onBookingRequested != null
+                        ? onBookingRequested!
+                        : () => onTabChanged(1),
                     onCard: () => onTabChanged(3),
                   ),
-                ),
-                const SliverToBoxAdapter(child: SizedBox(height: 32)),
-                SliverToBoxAdapter(
-                  child: SectionHeader(
-                    title: selectedGuide == null ? '내 일정에 맞는 가이드' : '함께할 가이드',
-                    subtitle: selectedGuide == null
-                        ? '${appState.cruise.port} 픽업과 6시간 투어가 가능해요'
-                        : '요청한 일정 제안을 준비하고 있어요',
-                    actionLabel: selectedGuide == null ? '전체 보기' : null,
-                    onAction: () => onTabChanged(1),
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: _GuidePreview(
-                    guide: selectedGuide ?? AppData.guides.first,
-                    selected: selectedGuide != null,
-                    onTap: () => _openGuide(
-                      context,
-                      selectedGuide ?? AppData.guides.first,
-                    ),
-                  ),
-                ),
-                const SliverToBoxAdapter(child: SizedBox(height: 32)),
-                SliverToBoxAdapter(
-                  child: SectionHeader(
-                    title: '제주에서의 하루',
-                    subtitle:
-                        '${_offsetTime(appState.cruise.departure, -100)} 항구 복귀 예정이에요',
-                    actionLabel: '일정 보기',
-                    onAction: () => _showSchedule(context),
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: _SchedulePreview(cruise: appState.cruise),
                 ),
                 const SliverToBoxAdapter(child: SizedBox(height: 32)),
                 SliverToBoxAdapter(
@@ -148,18 +115,6 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  void _openGuide(BuildContext context, Guide guide) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => GuideDetailScreen(
-          guide: guide,
-          appState: appState,
-          onCardApplicationRequested: onCardApplicationRequested,
-        ),
       ),
     );
   }
@@ -238,56 +193,6 @@ class HomeScreen extends StatelessWidget {
               label: '권장 관광시간',
               value:
                   '${_offsetTime(appState.cruise.arrival, 60)}–${_offsetTime(appState.cruise.departure, -90)}',
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showSchedule(BuildContext context) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => Padding(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 30),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('제주에서의 하루', style: Theme.of(context).textTheme.headlineSmall),
-            const SizedBox(height: 6),
-            Text(
-              '이동시간을 포함해도 70분의 복귀 여유가 있어요',
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
-            ),
-            const SizedBox(height: 18),
-            _TimelineRow(
-              time: _offsetTime(appState.cruise.arrival, 60),
-              title: '${appState.cruise.port}에서 출발',
-              detail: '가이드 미팅 · 10분',
-            ),
-            _TimelineRow(
-              time: _offsetTime(appState.cruise.arrival, 90),
-              title: '새연교',
-              detail: '바다 산책 · 50분',
-            ),
-            _TimelineRow(
-              time: _offsetTime(appState.cruise.arrival, 180),
-              title: '서귀포 로컬 식당',
-              detail: '점심 · 70분',
-            ),
-            _TimelineRow(
-              time: _offsetTime(appState.cruise.arrival, 310),
-              title: '오설록 티뮤지엄',
-              detail: '녹차밭과 티타임 · 80분',
-            ),
-            _TimelineRow(
-              time: _offsetTime(appState.cruise.departure, -100),
-              title: '${appState.cruise.port} 복귀',
-              detail: '승선 마감 ${_offsetTime(appState.cruise.departure, -30)}',
             ),
           ],
         ),
@@ -679,134 +584,6 @@ class _PreparationOptionRow extends StatelessWidget {
   }
 }
 
-class _GuidePreview extends StatelessWidget {
-  const _GuidePreview({
-    required this.guide,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final Guide guide;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return SurfaceCard(
-      margin: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-      padding: EdgeInsets.zero,
-      color: AppColors.surfaceSecondary,
-      onTap: onTap,
-      child: IntrinsicHeight(
-        child: Row(
-          key: const ValueKey('home-guide-preview-content'),
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            SizedBox(
-              width: 118,
-              child: Image.asset(
-                guide.image,
-                key: const ValueKey('home-guide-preview-image'),
-                fit: BoxFit.cover,
-                alignment: const Alignment(0, -0.35),
-                errorBuilder: (_, _, _) => const EmptyImageFallback(),
-              ),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        MetaPill(
-                          label: selected
-                              ? '제안 준비 중'
-                              : '일정 적합도 ${guide.match}%',
-                          selected: true,
-                          compact: true,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 9),
-                    Text(
-                      guide.name,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 3),
-                    RatingLabel(
-                      rating: guide.rating,
-                      reviews: guide.reviewCount,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '${guide.languages.skip(1).join(' · ')} · 차량 ${guide.carSeats}인',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    Text(
-                      '${formatWon(guide.price)}부터',
-                      style: Theme.of(context).textTheme.labelMedium,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const Padding(
-              padding: EdgeInsets.only(right: 12),
-              child: Icon(
-                Icons.chevron_right_rounded,
-                color: AppColors.textTertiary,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SchedulePreview extends StatelessWidget {
-  const _SchedulePreview({required this.cruise});
-
-  final CruiseOption cruise;
-
-  @override
-  Widget build(BuildContext context) {
-    return SurfaceCard(
-      margin: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-      color: AppColors.surfaceSecondary,
-      child: Column(
-        children: [
-          _TimelineRow(
-            time: _offsetTime(cruise.arrival, 60),
-            title: '${cruise.port}에서 출발',
-            detail: '가이드 미팅',
-          ),
-          _TimelineRow(
-            time: _offsetTime(cruise.arrival, 90),
-            title: '새연교',
-            detail: '바다 산책 · 50분',
-          ),
-          _TimelineRow(
-            time: _offsetTime(cruise.arrival, 180),
-            title: '서귀포 로컬 식당',
-            detail: '점심 · 70분',
-          ),
-          _TimelineRow(
-            time: _offsetTime(cruise.arrival, 310),
-            title: '오설록 티뮤지엄',
-            detail: '녹차밭과 티타임 · 80분',
-            last: true,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 String _offsetTime(String time, int offsetMinutes) {
   final parts = time.split(':');
   if (parts.length != 2) return time;
@@ -816,70 +593,6 @@ String _offsetTime(String time, int offsetMinutes) {
   final hours = value ~/ 60;
   final minutes = value % 60;
   return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}';
-}
-
-class _TimelineRow extends StatelessWidget {
-  const _TimelineRow({
-    required this.time,
-    required this.title,
-    required this.detail,
-    this.last = false,
-  });
-
-  final String time;
-  final String title;
-  final String detail;
-  final bool last;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 48,
-          child: Text(
-            time,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: AppColors.textSecondary,
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
-          ),
-        ),
-        SizedBox(
-          width: 20,
-          child: Column(
-            children: [
-              Container(
-                width: 10,
-                height: 10,
-                decoration: BoxDecoration(
-                  color: last ? AppColors.brand : Colors.white,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.brand, width: 2),
-                ),
-              ),
-              if (!last) Container(width: 1, height: 48, color: AppColors.line),
-            ],
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: Theme.of(context).textTheme.labelMedium),
-                const SizedBox(height: 2),
-                Text(detail, style: Theme.of(context).textTheme.bodySmall),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
 }
 
 class _PlaceMiniCard extends StatelessWidget {

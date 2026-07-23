@@ -43,26 +43,75 @@ void main() {
     );
     expect(find.byType(BrandHeaderMark), findsOneWidget);
     expect(find.text('곧, 제주에서 만나요'), findsOneWidget);
-    final guidePreview = find.byKey(
-      const ValueKey('home-guide-preview-content'),
-    );
-    final guideImage = find.byKey(const ValueKey('home-guide-preview-image'));
-    await tester.scrollUntilVisible(
-      guidePreview,
-      350,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.pumpAndSettle();
-    expect(guidePreview, findsOneWidget);
-    expect(guideImage, findsOneWidget);
+    expect(find.text('내 일정에 맞는 가이드'), findsNothing);
+    expect(find.text('함께할 가이드'), findsNothing);
+    expect(find.text('제주에서의 하루'), findsNothing);
     expect(
-      tester.getSize(guideImage).height,
-      tester.getSize(guidePreview).height,
+      find.byKey(const ValueKey('home-booking-quick-action')),
+      findsNothing,
     );
     expect(find.text('홈'), findsOneWidget);
     expect(find.text('가이드'), findsWidgets);
     expect(find.text('둘러보기'), findsOneWidget);
     expect(find.text('카드'), findsWidgets);
+  });
+
+  testWidgets('가이드 예약 후 홈에서 예약 정보와 채팅을 연다', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final appState = AppState()..issueCard(240000);
+    addTearDown(appState.dispose);
+    final guide = AppData.guides.first;
+    appState.submitGuideBooking(
+      GuideBooking(
+        guideId: guide.id,
+        transport: '가이드 승용차',
+        language: '한국어',
+        startTime: '10:00',
+        endTime: '16:00',
+        durationMinutes: 360,
+        total: 180000,
+      ),
+    );
+    appState.acceptGuideBooking(guide.id);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: MainShell(appState: appState),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final bookingButton = find.byKey(
+      const ValueKey('home-booking-quick-action'),
+    );
+    final assistantButton = find.byKey(const ValueKey('global-ai-assistant'));
+    expect(bookingButton, findsOneWidget);
+    expect(tester.getSize(bookingButton).width, greaterThan(150));
+    expect(
+      tester.getTopRight(bookingButton).dx,
+      lessThan(tester.getTopLeft(assistantButton).dx),
+    );
+    expect(find.textContaining('예약 확정'), findsOneWidget);
+
+    await tester.tap(bookingButton);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('booking-detail-hero')), findsOneWidget);
+    expect(find.text('${guide.name} 가이드'), findsWidgets);
+    expect(find.text('제주에서의 하루'), findsOneWidget);
+    expect(find.text('연결된 카드'), findsOneWidget);
+    expect(find.text('CRUJEJU 카드 · 8026'), findsOneWidget);
+    expect(
+      tester
+          .widget<Text>(find.byKey(const ValueKey('booking-detail-total')))
+          .data,
+      '180,000원',
+    );
+
+    await tester.tap(find.byKey(const ValueKey('booking-detail-chat')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('guide-chat-input')), findsOneWidget);
   });
 
   testWidgets('모바일 크기에서 네 개의 핵심 탭을 이동한다', (tester) async {
