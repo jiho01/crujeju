@@ -625,7 +625,17 @@ void main() {
     final detailScroll = find.byKey(
       const ValueKey('explore-place-detail-scroll'),
     );
-    for (var index = 0; index < 4; index++) {
+    final pinnedHeader = find.byKey(
+      const ValueKey('explore-place-pinned-header'),
+    );
+    expect(pinnedHeader, findsOneWidget);
+    await tester.drag(detailScroll, const Offset(0, -900));
+    await tester.pumpAndSettle();
+    final pinnedTop = tester.getTopLeft(pinnedHeader).dy;
+    await tester.drag(detailScroll, const Offset(0, -500));
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(pinnedHeader).dy, closeTo(pinnedTop, 1));
+    for (var index = 0; index < 2; index++) {
       await tester.drag(detailScroll, const Offset(0, -500));
       await tester.pumpAndSettle();
     }

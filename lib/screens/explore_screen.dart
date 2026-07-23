@@ -634,159 +634,98 @@ class _ExplorePlaceDetailSheet extends StatelessWidget {
     final reviews = AppData.placeReviews
         .where((review) => review.placeId == place.id)
         .toList();
-    return ListView(
+    return CustomScrollView(
       key: const ValueKey('explore-place-detail-scroll'),
       controller: controller,
-      padding: EdgeInsets.zero,
-      children: [
-        const _ExploreSheetHandle(),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(12, 0, 12, 14),
-          child: Row(
-            children: [
-              IconButton(
-                key: const ValueKey('explore-place-back-to-list'),
-                onPressed: onBack,
-                icon: const Icon(Icons.arrow_back_rounded),
-                tooltip: '목록으로',
+      slivers: [
+        SliverPersistentHeader(
+          pinned: true,
+          delegate: _ExplorePlaceHeaderDelegate(
+            child: Container(
+              key: const ValueKey('explore-place-pinned-header'),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                border: Border(bottom: BorderSide(color: AppColors.line)),
               ),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: Image.asset(
-                  place.image,
-                  width: 76,
-                  height: 72,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => const EmptyImageFallback(),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      place.category,
-                      style: Theme.of(
-                        context,
-                      ).textTheme.labelSmall?.copyWith(color: AppColors.brand),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      place.name,
-                      key: const ValueKey('explore-selected-place-name'),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 3),
-                    Row(
+              child: Column(
+                children: [
+                  const _ExploreSheetHandle(),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 14),
+                    child: Row(
                       children: [
-                        RatingLabel(rating: place.rating),
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: Text(
-                            '최근 결제 ${_formatCount(place.paymentCount)}건',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(color: _hotSpotColor(place)),
+                        IconButton(
+                          key: const ValueKey('explore-place-back-to-list'),
+                          onPressed: onBack,
+                          icon: const Icon(Icons.arrow_back_rounded),
+                          tooltip: '목록으로',
+                        ),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(14),
+                          child: Image.asset(
+                            place.image,
+                            width: 76,
+                            height: 72,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) =>
+                                const EmptyImageFallback(),
                           ),
                         ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              IconButton(
-                key: const ValueKey('explore-place-save'),
-                onPressed: onSave,
-                icon: Icon(
-                  saved
-                      ? Icons.favorite_rounded
-                      : Icons.favorite_border_rounded,
-                ),
-                color: saved ? AppColors.brand : AppColors.textTertiary,
-                tooltip: '내 여행에 담기',
-              ),
-            ],
-          ),
-        ),
-        const Divider(height: 1),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: Image.asset(
-              place.image,
-              height: 220,
-              width: double.infinity,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => const EmptyImageFallback(),
-            ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 22, 20, 0),
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              MetaPill(
-                label: '항구 ${place.fromPort}분',
-                icon: Icons.directions_car_outlined,
-              ),
-              MetaPill(
-                label: '${place.stayTime}분',
-                icon: Icons.schedule_rounded,
-              ),
-              MetaPill(
-                label: '${place.crowd}한 편',
-                icon: Icons.groups_outlined,
-                selected: place.crowd == '여유',
-              ),
-            ],
-          ),
-        ),
-        _ExploreDetailSection(
-          title: '이곳은 어떤 곳인가요?',
-          child: Text(
-            place.description,
-            style: Theme.of(context).textTheme.bodyLarge,
-          ),
-        ),
-        if (place.benefit != null)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
-            child: SurfaceCard(
-              color: AppColors.brandWeak,
-              child: Row(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.credit_card_rounded,
-                      color: AppColors.brand,
-                    ),
-                  ),
-                  const SizedBox(width: 13),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '카드 혜택이 있어요',
-                          style: Theme.of(context).textTheme.labelMedium,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                place.category,
+                                style: Theme.of(context).textTheme.labelSmall
+                                    ?.copyWith(color: AppColors.brand),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                place.name,
+                                key: const ValueKey(
+                                  'explore-selected-place-name',
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.titleLarge,
+                              ),
+                              const SizedBox(height: 3),
+                              Row(
+                                children: [
+                                  RatingLabel(rating: place.rating),
+                                  const SizedBox(width: 8),
+                                  Flexible(
+                                    child: Text(
+                                      '최근 결제 ${_formatCount(place.paymentCount)}건',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelSmall
+                                          ?.copyWith(
+                                            color: _hotSpotColor(place),
+                                          ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          place.benefit!,
-                          style: Theme.of(context).textTheme.bodySmall,
+                        IconButton(
+                          key: const ValueKey('explore-place-save'),
+                          onPressed: onSave,
+                          icon: Icon(
+                            saved
+                                ? Icons.favorite_rounded
+                                : Icons.favorite_border_rounded,
+                          ),
+                          color: saved
+                              ? AppColors.brand
+                              : AppColors.textTertiary,
+                          tooltip: '내 여행에 담기',
                         ),
                       ],
                     ),
@@ -795,50 +734,162 @@ class _ExplorePlaceDetailSheet extends StatelessWidget {
               ),
             ),
           ),
-        _ExploreDetailSection(
-          title: '방문 정보',
-          child: Column(
-            children: [
-              DetailInfoRow(
-                icon: Icons.schedule_outlined,
-                label: '운영시간',
-                value: place.hours,
-              ),
-              DetailInfoRow(
-                icon: Icons.location_on_outlined,
-                label: '위치',
-                value: place.location,
-              ),
-              DetailInfoRow(
-                icon: Icons.anchor_rounded,
-                label: '크루즈 항구에서',
-                value: '차로 약 ${place.fromPort}분',
-              ),
-            ],
-          ),
         ),
-        _ExploreDetailSection(
-          title: '최근 크루즈 여행자 후기 ${reviews.length}',
-          child: Column(
-            children: [
-              if (reviews.isEmpty)
-                Text(
-                  '아직 등록된 후기가 없어요',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                )
-              else
-                for (final review in reviews)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: _ExplorePlaceReview(review: review),
+        SliverList.list(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Image.asset(
+                  place.image,
+                  height: 220,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => const EmptyImageFallback(),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 22, 20, 0),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  MetaPill(
+                    label: '항구 ${place.fromPort}분',
+                    icon: Icons.directions_car_outlined,
                   ),
-            ],
-          ),
+                  MetaPill(
+                    label: '${place.stayTime}분',
+                    icon: Icons.schedule_rounded,
+                  ),
+                  MetaPill(
+                    label: '${place.crowd}한 편',
+                    icon: Icons.groups_outlined,
+                    selected: place.crowd == '여유',
+                  ),
+                ],
+              ),
+            ),
+            _ExploreDetailSection(
+              title: '이곳은 어떤 곳인가요?',
+              child: Text(
+                place.description,
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
+            ),
+            if (place.benefit != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+                child: SurfaceCard(
+                  color: AppColors.brandWeak,
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.credit_card_rounded,
+                          color: AppColors.brand,
+                        ),
+                      ),
+                      const SizedBox(width: 13),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '카드 혜택이 있어요',
+                              style: Theme.of(context).textTheme.labelMedium,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              place.benefit!,
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            _ExploreDetailSection(
+              title: '방문 정보',
+              child: Column(
+                children: [
+                  DetailInfoRow(
+                    icon: Icons.schedule_outlined,
+                    label: '운영시간',
+                    value: place.hours,
+                  ),
+                  DetailInfoRow(
+                    icon: Icons.location_on_outlined,
+                    label: '위치',
+                    value: place.location,
+                  ),
+                  DetailInfoRow(
+                    icon: Icons.anchor_rounded,
+                    label: '크루즈 항구에서',
+                    value: '차로 약 ${place.fromPort}분',
+                  ),
+                ],
+              ),
+            ),
+            _ExploreDetailSection(
+              title: '최근 크루즈 여행자 후기 ${reviews.length}',
+              child: Column(
+                children: [
+                  if (reviews.isEmpty)
+                    Text(
+                      '아직 등록된 후기가 없어요',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    )
+                  else
+                    for (final review in reviews)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _ExplorePlaceReview(review: review),
+                      ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 48),
+          ],
         ),
-        const SizedBox(height: 48),
       ],
     );
   }
+}
+
+class _ExplorePlaceHeaderDelegate extends SliverPersistentHeaderDelegate {
+  const _ExplorePlaceHeaderDelegate({required this.child});
+
+  final Widget child;
+
+  @override
+  double get minExtent => 116;
+
+  @override
+  double get maxExtent => 116;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return child;
+  }
+
+  @override
+  bool shouldRebuild(covariant _ExplorePlaceHeaderDelegate oldDelegate) =>
+      oldDelegate.child != child;
 }
 
 class _ExploreDetailSection extends StatelessWidget {
