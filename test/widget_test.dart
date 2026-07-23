@@ -791,7 +791,19 @@ void main() {
     expect(find.text('CRUJEJU 선불카드'), findsOneWidget);
     expect(find.text('환전 없이'), findsOneWidget);
 
-    await tester.tap(find.byKey(const ValueKey('recommended-card-apply')));
+    await tester.binding.setSurfaceSize(const Size(320, 844));
+    await tester.pumpAndSettle();
+    final applyButton = find.byKey(const ValueKey('recommended-card-apply'));
+    final laterButton = find.byKey(const ValueKey('recommended-card-later'));
+    expect(
+      tester.getTopLeft(laterButton).dy,
+      greaterThan(tester.getTopLeft(applyButton).dy),
+    );
+    final laterText = tester.widget<Text>(find.text('다음에 할게요'));
+    expect(laterText.maxLines, 1);
+    expect(laterText.softWrap, isFalse);
+
+    await tester.tap(applyButton);
     await tester.pumpAndSettle();
     expect(find.text('카드 신청'), findsOneWidget);
     expect(find.text('1/4'), findsOneWidget);

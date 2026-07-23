@@ -809,29 +809,50 @@ class _GuideDetailScreenState extends State<GuideDetailScreen> {
               ).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(sheetContext),
-                    child: const Text('다음에 할게요'),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final laterButton = OutlinedButton(
+                  key: const ValueKey('recommended-card-later'),
+                  onPressed: () => Navigator.pop(sheetContext),
+                  child: const Text(
+                    '다음에 할게요',
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: TextOverflow.visible,
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  flex: 2,
-                  child: FilledButton(
-                    key: const ValueKey('recommended-card-apply'),
-                    onPressed: () {
-                      Navigator.pop(sheetContext);
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        if (mounted) widget.onCardApplicationRequested();
-                      });
-                    },
-                    child: const Text('선불카드 발급받기'),
+                );
+                final applyButton = FilledButton(
+                  key: const ValueKey('recommended-card-apply'),
+                  onPressed: () {
+                    Navigator.pop(sheetContext);
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) widget.onCardApplicationRequested();
+                    });
+                  },
+                  child: const Text(
+                    '선불카드 발급받기',
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: TextOverflow.visible,
                   ),
-                ),
-              ],
+                );
+                if (constraints.maxWidth < 420) {
+                  return Column(
+                    children: [
+                      SizedBox(width: double.infinity, child: applyButton),
+                      const SizedBox(height: 8),
+                      SizedBox(width: double.infinity, child: laterButton),
+                    ],
+                  );
+                }
+                return Row(
+                  children: [
+                    Expanded(child: laterButton),
+                    const SizedBox(width: 10),
+                    Expanded(flex: 2, child: applyButton),
+                  ],
+                );
+              },
             ),
           ],
         ),
