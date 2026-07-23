@@ -185,7 +185,9 @@ void main() {
     expect(appState.cardIssued, isFalse);
     expect(appState.cardBalance, 0);
     expect(find.text('카드가 준비됐어요'), findsOneWidget);
-    expect(find.byKey(const ValueKey('pickup-location-image')), findsOneWidget);
+    final pickupImage = find.byKey(const ValueKey('pickup-location-image'));
+    expect(pickupImage, findsOneWidget);
+    expect(tester.getSize(pickupImage).height, 196);
     expect(find.byKey(const ValueKey('pickup-location-map')), findsOneWidget);
     expect(find.text('5412 •••• •••• 8026'), findsNothing);
     expect(find.text('100,000원'), findsNothing);
@@ -314,7 +316,26 @@ void main() {
     expect(find.byIcon(Icons.local_fire_department_rounded), findsWidgets);
 
     final marker = find.byKey(const ValueKey('map-marker-saeyeongyo'));
+    final fixedMarker = find.byKey(
+      const ValueKey('fixed-map-marker-saeyeongyo'),
+    );
     expect(marker, findsOneWidget);
+    expect(fixedMarker, findsOneWidget);
+    final fixedTransform = find.byKey(
+      const ValueKey('fixed-map-marker-transform-saeyeongyo'),
+    );
+    expect(
+      tester.widget<Transform>(fixedTransform).transform.storage[0],
+      closeTo(1, .001),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('map-zoom-in')));
+    await tester.pump();
+    expect(
+      tester.widget<Transform>(fixedTransform).transform.storage[0],
+      closeTo(1 / 1.35, .001),
+    );
+
     await tester.tap(marker);
     await tester.pumpAndSettle();
     expect(find.text('최근 결제 214건'), findsOneWidget);
@@ -541,19 +562,20 @@ void main() {
     await tester.pump();
     expect(tester.widget<Text>(total).data, '220,000원');
 
-    await tester.tap(find.byKey(const ValueKey('booking-start-10:00')));
+    await tester.tap(find.byKey(const ValueKey('booking-language-English')));
     await tester.pump();
-    expect(tester.widget<Text>(total).data, '240,000원');
 
-    final eightHours = find.byKey(const ValueKey('booking-duration-8'));
-    await tester.ensureVisible(eightHours);
-    await tester.tap(eightHours);
+    final timeRange = find.byKey(const ValueKey('booking-time-range'));
+    await tester.ensureVisible(timeRange);
+    tester.widget<RangeSlider>(timeRange).onChanged!(const RangeValues(10, 17));
     await tester.pump();
-    expect(tester.widget<Text>(total).data, '320,000원');
+    expect(tester.widget<Text>(total).data, '245,000원');
+    expect(find.text('10:00 – 17:00'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('guide-booking-submit')));
     await tester.pumpAndSettle();
     expect(appState.selectedGuideId, 'mina');
-    expect(find.textContaining('프리미엄 밴 · 10:00 시작 · 8시간'), findsOneWidget);
+    expect(find.textContaining('프리미엄 밴 · English'), findsOneWidget);
+    expect(find.textContaining('10:00–17:00 · 7시간'), findsOneWidget);
   });
 }

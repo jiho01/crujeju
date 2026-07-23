@@ -315,16 +315,9 @@ class _GuideDetailScreenState extends State<GuideDetailScreen> {
         priceDelta: -30000,
       ),
     ];
-    const startTimes = [
-      ('09:30', 0),
-      ('10:00', 20000),
-      ('10:30', 10000),
-      ('11:00', 0),
-    ];
-    const durations = [(4, -50000), (6, 0), (8, 80000)];
     var selectedTransport = transportOptions.first;
-    var selectedTime = startTimes.first;
-    var selectedDuration = durations[1];
+    var selectedLanguage = widget.guide.languages.first;
+    var selectedTimeRange = const RangeValues(10, 16);
 
     final selection = await showModalBottomSheet<_GuideBookingSelection>(
       context: context,
@@ -332,11 +325,15 @@ class _GuideDetailScreenState extends State<GuideDetailScreen> {
       isScrollControlled: true,
       builder: (sheetContext) => StatefulBuilder(
         builder: (context, setSheetState) {
+          final durationMinutes =
+              ((selectedTimeRange.end - selectedTimeRange.start) * 60).round();
+          final durationPriceDelta = ((durationMinutes - 360) ~/ 30) * 12500;
           final total =
               widget.guide.price +
               selectedTransport.priceDelta +
-              selectedTime.$2 +
-              selectedDuration.$2;
+              durationPriceDelta;
+          final startTime = _formatBookingTime(selectedTimeRange.start);
+          final endTime = _formatBookingTime(selectedTimeRange.end);
           return FractionallySizedBox(
             key: const ValueKey('guide-booking-options'),
             heightFactor: .92,
@@ -356,7 +353,7 @@ class _GuideDetailScreenState extends State<GuideDetailScreen> {
                             ),
                             const SizedBox(height: 3),
                             Text(
-                              '선택한 이동수단과 시간에 따라 가격이 달라져요.',
+                              '언어와 이동수단, 투어 시간을 한 번에 정할 수 있어요.',
                               style: Theme.of(context).textTheme.bodySmall,
                             ),
                           ],
@@ -376,6 +373,27 @@ class _GuideDetailScreenState extends State<GuideDetailScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        Text(
+                          '사용 언어',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: widget.guide.languages.map((language) {
+                            return ChoiceChip(
+                              key: ValueKey('booking-language-$language'),
+                              label: Text(language),
+                              selected: language == selectedLanguage,
+                              showCheckmark: false,
+                              onSelected: (_) => setSheetState(
+                                () => selectedLanguage = language,
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 26),
                         Text(
                           '이동수단',
                           style: Theme.of(context).textTheme.titleMedium,
@@ -399,61 +417,105 @@ class _GuideDetailScreenState extends State<GuideDetailScreen> {
                           ),
                         const SizedBox(height: 16),
                         Text(
-                          '투어 시작 시간',
+                          '투어 시간',
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
                         const SizedBox(height: 10),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: startTimes.map((time) {
-                            return ChoiceChip(
-                              key: ValueKey('booking-start-${time.$1}'),
-                              label: Text(
-                                time.$2 == 0
-                                    ? time.$1
-                                    : '${time.$1}  +${formatWon(time.$2)}',
-                              ),
-                              selected: time == selectedTime,
-                              showCheckmark: false,
-                              onSelected: (_) =>
-                                  setSheetState(() => selectedTime = time),
-                            );
-                          }).toList(),
-                        ),
-                        const SizedBox(height: 26),
-                        Text(
-                          '이용 시간',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          children: durations.map((duration) {
-                            return Expanded(
-                              child: Padding(
-                                padding: EdgeInsets.only(
-                                  right: duration.$1 == 8 ? 0 : 8,
-                                ),
-                                child: ChoiceChip(
-                                  key: ValueKey(
-                                    'booking-duration-${duration.$1}',
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+                          decoration: BoxDecoration(
+                            color: AppColors.brandWeak,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: AppColors.brand.withValues(alpha: .16),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.schedule_rounded,
+                                    size: 20,
+                                    color: AppColors.brand,
                                   ),
-                                  label: SizedBox(
-                                    width: double.infinity,
+                                  const SizedBox(width: 8),
+                                  Expanded(
                                     child: Text(
-                                      '${duration.$1}시간',
-                                      textAlign: TextAlign.center,
+                                      '$startTime – $endTime',
+                                      key: const ValueKey(
+                                        'booking-time-summary',
+                                      ),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium
+                                          ?.copyWith(
+                                            color: AppColors.brandNavy,
+                                          ),
                                     ),
                                   ),
-                                  selected: duration == selectedDuration,
-                                  showCheckmark: false,
-                                  onSelected: (_) => setSheetState(
-                                    () => selectedDuration = duration,
+                                  Text(
+                                    _formatBookingDuration(durationMinutes),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelLarge
+                                        ?.copyWith(color: AppColors.brand),
                                   ),
-                                ),
+                                ],
                               ),
-                            );
-                          }).toList(),
+                              const SizedBox(height: 3),
+                              Text(
+                                '양쪽 손잡이를 드래그해 시작과 종료 시간을 함께 정하세요.',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                              RangeSlider(
+                                key: const ValueKey('booking-time-range'),
+                                values: selectedTimeRange,
+                                min: 9,
+                                max: 18,
+                                divisions: 18,
+                                labels: RangeLabels(startTime, endTime),
+                                onChanged: (value) {
+                                  if (value.end - value.start < 3) return;
+                                  setSheetState(
+                                    () => selectedTimeRange = RangeValues(
+                                      (value.start * 2).round() / 2,
+                                      (value.end * 2).round() / 2,
+                                    ),
+                                  );
+                                },
+                              ),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    '09:00',
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.labelSmall,
+                                  ),
+                                  Text(
+                                    '최소 3시간',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall
+                                        ?.copyWith(
+                                          color: AppColors.textSecondary,
+                                        ),
+                                  ),
+                                  Text(
+                                    '18:00',
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.labelSmall,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 18),
                         SurfaceCard(
@@ -473,13 +535,9 @@ class _GuideDetailScreenState extends State<GuideDetailScreen> {
                               ),
                               const SizedBox(height: 9),
                               _BookingPriceRow(
-                                label: '${selectedTime.$1} 시작',
-                                value: _priceDeltaLabel(selectedTime.$2),
-                              ),
-                              const SizedBox(height: 9),
-                              _BookingPriceRow(
-                                label: '${selectedDuration.$1}시간 이용',
-                                value: _priceDeltaLabel(selectedDuration.$2),
+                                label:
+                                    '$startTime–$endTime · ${_formatBookingDuration(durationMinutes)}',
+                                value: _priceDeltaLabel(durationPriceDelta),
                               ),
                             ],
                           ),
@@ -522,8 +580,10 @@ class _GuideDetailScreenState extends State<GuideDetailScreen> {
                               sheetContext,
                               _GuideBookingSelection(
                                 transport: selectedTransport.title,
-                                startTime: selectedTime.$1,
-                                hours: selectedDuration.$1,
+                                language: selectedLanguage,
+                                startTime: startTime,
+                                endTime: endTime,
+                                durationMinutes: durationMinutes,
                                 total: total,
                               ),
                             ),
@@ -579,7 +639,10 @@ class _GuideDetailScreenState extends State<GuideDetailScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              '${selection.transport} · ${selection.startTime} 시작 · ${selection.hours}시간\n예상금액 ${formatWon(selection.total)}',
+              '${selection.transport} · ${selection.language}\n'
+              '${selection.startTime}–${selection.endTime} · '
+              '${_formatBookingDuration(selection.durationMinutes)}\n'
+              '예상금액 ${formatWon(selection.total)}',
               textAlign: TextAlign.center,
               style: Theme.of(
                 context,
@@ -779,15 +842,33 @@ class _BookingTransportOption {
 class _GuideBookingSelection {
   const _GuideBookingSelection({
     required this.transport,
+    required this.language,
     required this.startTime,
-    required this.hours,
+    required this.endTime,
+    required this.durationMinutes,
     required this.total,
   });
 
   final String transport;
+  final String language;
   final String startTime;
-  final int hours;
+  final String endTime;
+  final int durationMinutes;
   final int total;
+}
+
+String _formatBookingTime(double value) {
+  final totalMinutes = (value * 60).round();
+  final hour = totalMinutes ~/ 60;
+  final minute = totalMinutes % 60;
+  return '${hour.toString().padLeft(2, '0')}:'
+      '${minute.toString().padLeft(2, '0')}';
+}
+
+String _formatBookingDuration(int durationMinutes) {
+  final hours = durationMinutes ~/ 60;
+  final minutes = durationMinutes % 60;
+  return minutes == 0 ? '$hours시간' : '$hours시간 $minutes분';
 }
 
 class _BookingOptionTile extends StatelessWidget {

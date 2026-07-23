@@ -556,7 +556,7 @@ class _PickupWallet extends StatelessWidget {
                       children: [
                         SizedBox(
                           width: double.infinity,
-                          height: 138,
+                          height: 196,
                           child: Image.asset(
                             key: const ValueKey('pickup-location-image'),
                             cruise.port == '강정항'

@@ -554,23 +554,39 @@ class _MapView extends StatefulWidget {
 class _MapViewState extends State<_MapView> {
   final TransformationController _mapController = TransformationController();
   bool _previewVisible = false;
+  double _mapScale = 1;
+
+  @override
+  void initState() {
+    super.initState();
+    _mapController.addListener(_handleMapTransform);
+  }
 
   @override
   void dispose() {
+    _mapController.removeListener(_handleMapTransform);
     _mapController.dispose();
     super.dispose();
   }
 
+  void _handleMapTransform() {
+    final nextScale = _mapController.value.entry(0, 0).abs();
+    if (!mounted || (nextScale - _mapScale).abs() < .001) return;
+    setState(() => _mapScale = nextScale);
+  }
+
   void _zoom(double factor) {
-    final currentScale = _mapController.value.getMaxScaleOnAxis();
+    final currentScale = _mapController.value.entry(0, 0).abs();
     final targetScale = (currentScale * factor).clamp(.8, 3.0);
     final nextTransform = _mapController.value.clone()
       ..setEntry(0, 0, targetScale)
       ..setEntry(1, 1, targetScale);
+    setState(() => _mapScale = targetScale);
     _mapController.value = nextTransform;
   }
 
   void _resetMap() {
+    setState(() => _mapScale = 1);
     _mapController.value = Matrix4.identity();
   }
 
@@ -599,27 +615,48 @@ class _MapViewState extends State<_MapView> {
                         Positioned.fill(
                           child: CustomPaint(painter: _MapPainter()),
                         ),
-                        const Align(
+                        Align(
                           alignment: Alignment(-0.38, -0.48),
-                          child: _CruisePortMarker(label: '제주항', city: '제주시'),
+                          child: _FixedMapMarkerScale(
+                            scale: _mapScale,
+                            child: const _CruisePortMarker(
+                              label: '제주항',
+                              city: '제주시',
+                            ),
+                          ),
                         ),
-                        const Align(
+                        Align(
                           alignment: Alignment(-0.08, 0.42),
-                          child: _CruisePortMarker(label: '강정항', city: '서귀포'),
+                          child: _FixedMapMarkerScale(
+                            scale: _mapScale,
+                            child: const _CruisePortMarker(
+                              label: '강정항',
+                              city: '서귀포',
+                            ),
+                          ),
                         ),
                         for (var i = 0; i < widget.places.length; i++)
                           Align(
                             alignment: _MapView
                                 ._positions[i % _MapView._positions.length],
-                            child: _MapPhotoMarker(
-                              place: widget.places[i],
-                              selected:
-                                  widget.places[i].id ==
-                                  widget.selectedPlace.id,
-                              onTap: () {
-                                widget.onSelected(widget.places[i]);
-                                setState(() => _previewVisible = true);
-                              },
+                            child: _FixedMapMarkerScale(
+                              key: ValueKey(
+                                'fixed-map-marker-${widget.places[i].id}',
+                              ),
+                              transformKey: ValueKey(
+                                'fixed-map-marker-transform-${widget.places[i].id}',
+                              ),
+                              scale: _mapScale,
+                              child: _MapPhotoMarker(
+                                place: widget.places[i],
+                                selected:
+                                    widget.places[i].id ==
+                                    widget.selectedPlace.id,
+                                onTap: () {
+                                  widget.onSelected(widget.places[i]);
+                                  setState(() => _previewVisible = true);
+                                },
+                              ),
                             ),
                           ),
                       ],
@@ -672,6 +709,29 @@ class _MapViewState extends State<_MapView> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _FixedMapMarkerScale extends StatelessWidget {
+  const _FixedMapMarkerScale({
+    required this.scale,
+    required this.child,
+    this.transformKey,
+    super.key,
+  });
+
+  final double scale;
+  final Widget child;
+  final Key? transformKey;
+
+  @override
+  Widget build(BuildContext context) {
+    return Transform.scale(
+      key: transformKey,
+      scale: 1 / scale,
+      alignment: Alignment.center,
+      child: child,
     );
   }
 }
