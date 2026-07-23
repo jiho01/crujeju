@@ -177,17 +177,15 @@ class _BookingQuickAction extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(13, 8, 11, 8),
             child: Row(
               children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: AppColors.brandWeak,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.event_available_rounded,
-                    size: 20,
-                    color: AppColors.brand,
+                ClipRRect(
+                  key: const ValueKey('home-booking-guide-photo'),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.asset(
+                    guide.image,
+                    width: 36,
+                    height: 36,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => const EmptyImageFallback(),
                   ),
                 ),
                 const SizedBox(width: 10),

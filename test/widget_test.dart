@@ -93,6 +93,13 @@ void main() {
       tester.getTopRight(bookingButton).dx,
       lessThan(tester.getTopLeft(assistantButton).dx),
     );
+    final guidePhoto = tester.widget<Image>(
+      find.descendant(
+        of: find.byKey(const ValueKey('home-booking-guide-photo')),
+        matching: find.byType(Image),
+      ),
+    );
+    expect((guidePhoto.image as AssetImage).assetName, guide.image);
     expect(find.textContaining('예약 확정'), findsOneWidget);
 
     await tester.tap(bookingButton);
