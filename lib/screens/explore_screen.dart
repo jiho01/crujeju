@@ -1414,16 +1414,7 @@ class _MapPainter extends CustomPainter {
     final bounds = Offset.zero & size;
     double mapY(double y) => size.height * .46 + (y - .49) * size.width;
 
-    canvas.drawRect(
-      bounds,
-      Paint()
-        ..shader = const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFFCDEAF8), Color(0xFFDDF2FA), Color(0xFFC8E7F4)],
-          stops: [0, .48, 1],
-        ).createShader(bounds),
-    );
+    canvas.drawRect(bounds, Paint()..color = const Color(0xFFD7EEF7));
 
     void drawLabel(
       String text,
@@ -1475,118 +1466,6 @@ class _MapPainter extends CustomPainter {
         weight: major ? FontWeight.w700 : FontWeight.w600,
       );
     }
-
-    void drawRoad(Path path, {bool primary = false}) {
-      canvas.drawPath(
-        path,
-        Paint()
-          ..color = primary ? const Color(0xFFB8C8BE) : const Color(0xFFC9D5CE)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = primary ? 5.4 : 3.5
-          ..strokeCap = StrokeCap.round
-          ..strokeJoin = StrokeJoin.round,
-      );
-      canvas.drawPath(
-        path,
-        Paint()
-          ..color = primary ? Colors.white : const Color(0xFFF8FAF7)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = primary ? 3.5 : 2.1
-          ..strokeCap = StrokeCap.round
-          ..strokeJoin = StrokeJoin.round,
-      );
-    }
-
-    void drawRoadShield(String number, double x, double y) {
-      final center = Offset(size.width * x, mapY(y));
-      final textPainter = TextPainter(
-        text: TextSpan(
-          text: number,
-          style: const TextStyle(
-            color: Color(0xFF7A6A45),
-            fontSize: 8.5,
-            fontWeight: FontWeight.w700,
-            height: 1,
-          ),
-        ),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      final rect = Rect.fromCenter(
-        center: center,
-        width: textPainter.width + 9,
-        height: 16,
-      );
-      canvas
-        ..drawRRect(
-          RRect.fromRectAndRadius(rect, const Radius.circular(4)),
-          Paint()..color = const Color(0xFFFFF7D9),
-        )
-        ..drawRRect(
-          RRect.fromRectAndRadius(rect, const Radius.circular(4)),
-          Paint()
-            ..color = const Color(0xFFD8C68B)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 1,
-        );
-      textPainter.paint(
-        canvas,
-        Offset(
-          center.dx - textPainter.width / 2,
-          center.dy - textPainter.height / 2,
-        ),
-      );
-    }
-
-    final waterDetail = Paint()
-      ..color = const Color(0x3383B8D2)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.1
-      ..strokeCap = StrokeCap.round;
-    for (var row = 0; row < 5; row++) {
-      for (var column = 0; column < 6; column++) {
-        final center = Offset(
-          size.width * (.08 + column * .18 + (row.isOdd ? .05 : 0)),
-          size.height * (.08 + row * .19),
-        );
-        canvas.drawArc(
-          Rect.fromCenter(
-            center: center,
-            width: size.width * .045,
-            height: size.height * .012,
-          ),
-          0,
-          3.14,
-          false,
-          waterDetail,
-        );
-      }
-    }
-
-    final ferryPaint = Paint()
-      ..color = const Color(0x4D6FA9C6)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.15;
-    for (var index = 0; index < 3; index++) {
-      final route = Path()
-        ..moveTo(size.width * (.43 + index * .035), mapY(.29))
-        ..cubicTo(
-          size.width * (.40 + index * .03),
-          size.height * .20,
-          size.width * (.34 + index * .05),
-          size.height * .12,
-          size.width * (.28 + index * .11),
-          size.height * .035,
-        );
-      canvas.drawPath(route, ferryPaint);
-    }
-    drawLabel(
-      '제 주 해 협',
-      Offset(size.width * .52, size.height * .12),
-      size: 13,
-      color: const Color(0xFF5E8EA7),
-      weight: FontWeight.w700,
-      letterSpacing: 1.2,
-    );
 
     final island = Path()
       ..moveTo(size.width * .025, mapY(.49))
@@ -1736,146 +1615,7 @@ class _MapPainter extends CustomPainter {
       ..close();
     canvas.drawPath(easternForest, Paint()..color = const Color(0x3DAED39F));
 
-    final mountainBounds = Rect.fromCenter(
-      center: Offset(size.width * .50, mapY(.49)),
-      width: size.width * .43,
-      height: size.width * .31,
-    );
-    canvas.drawOval(
-      mountainBounds,
-      Paint()
-        ..shader = const RadialGradient(
-          colors: [Color(0xFFC1DDAE), Color(0x99CFE4BE), Color(0x00DDECCF)],
-          stops: [0, .58, 1],
-        ).createShader(mountainBounds),
-    );
-
-    final fieldPaint = Paint()
-      ..color = const Color(0x287D9D82)
-      ..strokeWidth = .8;
-    for (var index = 0; index < 9; index++) {
-      final x = size.width * (.10 + index * .10);
-      canvas.drawLine(
-        Offset(x, mapY(.35)),
-        Offset(x - size.width * .07, mapY(.64)),
-        fieldPaint,
-      );
-    }
-
-    for (var level = 0; level < 4; level++) {
-      final inset = level * .035;
-      canvas.drawOval(
-        Rect.fromCenter(
-          center: Offset(size.width * .50, mapY(.49)),
-          width: size.width * (.36 - inset),
-          height: size.width * (.245 - inset * .7),
-        ),
-        Paint()
-          ..color = const Color(0x55749B68)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1,
-      );
-    }
-
-    final coastRoad = Path()
-      ..moveTo(size.width * .07, mapY(.49))
-      ..cubicTo(
-        size.width * .20,
-        mapY(.355),
-        size.width * .37,
-        mapY(.345),
-        size.width * .50,
-        mapY(.33),
-      )
-      ..cubicTo(
-        size.width * .68,
-        mapY(.31),
-        size.width * .84,
-        mapY(.37),
-        size.width * .92,
-        mapY(.46),
-      )
-      ..cubicTo(
-        size.width * .85,
-        mapY(.57),
-        size.width * .68,
-        mapY(.61),
-        size.width * .51,
-        mapY(.65),
-      )
-      ..cubicTo(
-        size.width * .34,
-        mapY(.68),
-        size.width * .15,
-        mapY(.62),
-        size.width * .07,
-        mapY(.52),
-      );
-    drawRoad(coastRoad, primary: true);
-
-    final centralRoad = Path()
-      ..moveTo(size.width * .49, mapY(.33))
-      ..cubicTo(
-        size.width * .46,
-        mapY(.41),
-        size.width * .49,
-        mapY(.54),
-        size.width * .47,
-        mapY(.65),
-      );
-    final westRoad = Path()
-      ..moveTo(size.width * .19, mapY(.37))
-      ..cubicTo(
-        size.width * .31,
-        mapY(.43),
-        size.width * .34,
-        mapY(.54),
-        size.width * .30,
-        mapY(.66),
-      );
-    final eastRoad = Path()
-      ..moveTo(size.width * .78, mapY(.36))
-      ..cubicTo(
-        size.width * .68,
-        mapY(.42),
-        size.width * .65,
-        mapY(.53),
-        size.width * .72,
-        mapY(.60),
-      );
-    final beltRoad = Path()
-      ..moveTo(size.width * .12, mapY(.51))
-      ..cubicTo(
-        size.width * .33,
-        mapY(.43),
-        size.width * .67,
-        mapY(.56),
-        size.width * .90,
-        mapY(.45),
-      );
-    drawRoad(centralRoad, primary: true);
-    drawRoad(westRoad);
-    drawRoad(eastRoad);
-    drawRoad(beltRoad);
-
     canvas.restore();
-
-    final summit = Offset(size.width * .50, mapY(.49));
-    canvas
-      ..drawCircle(summit, 7, Paint()..color = const Color(0xFFD7E9C8))
-      ..drawCircle(
-        summit,
-        7,
-        Paint()
-          ..color = const Color(0xFF6E9664)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.5,
-      )
-      ..drawCircle(summit, 2.5, Paint()..color = const Color(0xFF6E9664));
-
-    drawRoadShield('1131', .56, .565);
-    drawRoadShield('1115', .30, .48);
-    drawRoadShield('1132', .75, .49);
 
     drawTown('제주시', .50, .335, major: true);
     drawTown('애월', .24, .39);
@@ -1884,14 +1624,6 @@ class _MapPainter extends CustomPainter {
     drawTown('표선', .78, .56);
     drawTown('중문', .34, .61);
     drawTown('서귀포', .50, .645, major: true);
-
-    drawLabel(
-      '한라산\n1,947m',
-      summit.translate(0, 18),
-      size: 10.5,
-      color: const Color(0xFF4D7749),
-      weight: FontWeight.w700,
-    );
 
     void drawSmallIsland(
       String label,
@@ -1923,13 +1655,6 @@ class _MapPainter extends CustomPainter {
     drawSmallIsland('비양도', .10, .34, .020, .014);
     drawSmallIsland('가파도', .28, .735, .025, .013);
     drawSmallIsland('마라도', .23, .785, .018, .012);
-
-    drawLabel(
-      '한라산국립공원',
-      Offset(size.width * .61, mapY(.52)),
-      size: 8.8,
-      color: const Color(0xFF6D9365),
-    );
   }
 
   @override
