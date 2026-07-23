@@ -23,7 +23,23 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('CRUJEJU'), findsOneWidget);
+    final brandLogo = find.byKey(const ValueKey('crujeju-brand-logo'));
+    expect(brandLogo, findsOneWidget);
+    expect(
+      (tester.widget<Image>(brandLogo).image as AssetImage).assetName,
+      'assets/images/crujeju_logo_transparent.png',
+    );
+    expect(find.text('CRUJEJU'), findsNothing);
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is Image &&
+            widget.image is AssetImage &&
+            (widget.image as AssetImage).assetName ==
+                'assets/images/crujeju_icon.png',
+      ),
+      findsNothing,
+    );
     expect(find.byType(BrandHeaderMark), findsOneWidget);
     expect(find.text('곧, 제주에서 만나요'), findsOneWidget);
     final guidePreview = find.byKey(
@@ -82,7 +98,7 @@ void main() {
     await tester.pumpWidget(const JejuCruiseApp());
     await tester.pumpAndSettle();
 
-    expect(find.text('CRUJEJU'), findsOneWidget);
+    expect(find.byKey(const ValueKey('crujeju-brand-logo')), findsOneWidget);
     expect(find.byType(BrandHeaderMark), findsOneWidget);
     expect(find.text('1/3'), findsOneWidget);
     expect(find.text('이전'), findsNothing);
@@ -125,7 +141,7 @@ void main() {
     await tester.tap(find.text('여행 준비 시작하기'));
     await tester.pumpAndSettle();
 
-    expect(find.text('CRUJEJU'), findsOneWidget);
+    expect(find.byKey(const ValueKey('crujeju-brand-logo')), findsOneWidget);
     expect(find.text('곧, 제주에서 만나요'), findsOneWidget);
   });
 
@@ -148,7 +164,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('CRUJEJU'), findsOneWidget);
+    expect(find.byKey(const ValueKey('crujeju-brand-logo')), findsOneWidget);
   });
 
   testWidgets('미발급 카드 신청을 완료하면 잔액 화면으로 전환된다', (tester) async {

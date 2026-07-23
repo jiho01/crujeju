@@ -2,52 +2,25 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 
-class BrandWordmark extends StatelessWidget {
-  const BrandWordmark({super.key, this.fontSize = 20});
-
-  final double fontSize;
-
-  @override
-  Widget build(BuildContext context) {
-    return ShaderMask(
-      blendMode: BlendMode.srcIn,
-      shaderCallback: (bounds) => const LinearGradient(
-        colors: [AppColors.brandNavy, AppColors.brand, AppColors.ocean],
-        stops: [0, .52, 1],
-      ).createShader(bounds),
-      child: Text(
-        'CRUJEJU',
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: fontSize,
-          height: 1.1,
-          fontWeight: FontWeight.w800,
-          letterSpacing: .45,
-        ),
-      ),
-    );
-  }
-}
-
 class BrandHeaderMark extends StatelessWidget {
-  const BrandHeaderMark({super.key});
+  const BrandHeaderMark({super.key, this.width = 154, this.height = 38});
+
+  final double width;
+  final double height;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SizedBox(
-          width: 38,
-          height: 38,
-          child: Transform.scale(
-            scale: 1.2,
-            child: Image.asset('assets/images/crujeju_icon.png'),
-          ),
-        ),
-        const SizedBox(width: 10),
-        const BrandWordmark(fontSize: 18),
-      ],
+    return SizedBox(
+      width: width,
+      height: height,
+      child: Image.asset(
+        'assets/images/crujeju_logo_transparent.png',
+        key: const ValueKey('crujeju-brand-logo'),
+        fit: BoxFit.contain,
+        alignment: Alignment.centerLeft,
+        filterQuality: FilterQuality.high,
+        semanticLabel: 'CRUJEJU',
+      ),
     );
   }
 }

@@ -1176,13 +1176,7 @@ class AppLaunchScreen extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              SizedBox(
-                width: 92,
-                height: 92,
-                child: Image.asset('assets/images/crujeju_icon.png'),
-              ),
-              const SizedBox(height: 12),
-              const BrandWordmark(fontSize: 22),
+              const BrandHeaderMark(width: 230, height: 60),
               const SizedBox(height: 24),
               const SizedBox(
                 width: 22,
