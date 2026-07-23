@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../data/app_data.dart';
+import '../data/guide_itinerary.dart';
 import '../models/models.dart';
 import '../state/app_state.dart';
 import '../theme/app_theme.dart';
@@ -339,51 +339,13 @@ class _GuideSchedule extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final savedPlaces = AppData.places
-        .where((place) => appState.isPlaceSaved(place.id))
-        .toList();
-    final firstPlace = savedPlaces.isEmpty
-        ? AppData.places.first
-        : savedPlaces[0];
-    final secondPlace = savedPlaces.length > 1
-        ? savedPlaces[1]
-        : AppData.places[1];
-    final schedule = [
-      (
-        booking.startTime,
-        '${appState.cruise.port}에서 미팅',
-        '${guide.name} 가이드와 일정 확인',
-      ),
-      (
-        _offsetBookingTime(
-          booking.startTime,
-          booking.durationMinutes * 22 ~/ 100,
-        ),
-        firstPlace.name,
-        '${firstPlace.category} · ${firstPlace.stayTime}분',
-      ),
-      (
-        _offsetBookingTime(
-          booking.startTime,
-          booking.durationMinutes * 48 ~/ 100,
-        ),
-        '제주 로컬 식당',
-        '가이드 추천 점심 · 60분',
-      ),
-      (
-        _offsetBookingTime(
-          booking.startTime,
-          booking.durationMinutes * 70 ~/ 100,
-        ),
-        secondPlace.name,
-        '${secondPlace.category} · ${secondPlace.stayTime}분',
-      ),
-      (
-        booking.endTime,
-        '${appState.cruise.port} 복귀',
-        '출항 ${appState.cruise.departure} · 안전하게 승선',
-      ),
-    ];
+    final selectedPlaces = selectedGuidePlaces(appState.savedPlaceIds);
+    final schedule = buildGuideItinerary(
+      booking: booking,
+      guide: guide,
+      cruise: appState.cruise,
+      selectedPlaces: selectedPlaces,
+    );
     return SurfaceCard(
       color: Colors.white,
       padding: const EdgeInsets.fromLTRB(16, 18, 16, 2),
@@ -391,9 +353,9 @@ class _GuideSchedule extends StatelessWidget {
         children: [
           for (var index = 0; index < schedule.length; index++)
             _BookingTimelineRow(
-              time: schedule[index].$1,
-              title: schedule[index].$2,
-              detail: schedule[index].$3,
+              time: schedule[index].time,
+              title: schedule[index].title,
+              detail: schedule[index].detail,
               last: index == schedule.length - 1,
             ),
         ],
@@ -743,14 +705,4 @@ String _durationLabel(int minutes) {
   final hours = minutes ~/ 60;
   final remainder = minutes % 60;
   return remainder == 0 ? '$hours시간' : '$hours시간 $remainder분';
-}
-
-String _offsetBookingTime(String time, int offsetMinutes) {
-  final parts = time.split(':');
-  if (parts.length != 2) return time;
-  final base =
-      (int.tryParse(parts[0]) ?? 0) * 60 + (int.tryParse(parts[1]) ?? 0);
-  final value = (base + offsetMinutes) % (24 * 60);
-  return '${(value ~/ 60).toString().padLeft(2, '0')}:'
-      '${(value % 60).toString().padLeft(2, '0')}';
 }

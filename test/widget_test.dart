@@ -836,6 +836,20 @@ void main() {
     expect(find.textContaining('가이드 일정 요청을 보냈어요.'), findsOneWidget);
     expect(find.byKey(const ValueKey('guide-booking-accept')), findsOneWidget);
     expect(find.byKey(const ValueKey('guide-booking-reject')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('guide-booking-itinerary')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('guide-booking-selected-place-saeyeongyo')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('guide-booking-selected-place-oseolrok')),
+      findsOneWidget,
+    );
+    expect(find.text('가이드 계획 일정'), findsOneWidget);
+    expect(find.text('선택 장소 반영'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('guide-booking-modify')));
     await tester.pumpAndSettle();
