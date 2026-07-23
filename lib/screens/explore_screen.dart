@@ -147,42 +147,68 @@ class _ExploreScreenState extends State<ExploreScreen> {
             ],
           ),
         ),
-        DraggableScrollableSheet(
-          key: const ValueKey('explore-bottom-sheet'),
-          controller: _sheetController,
-          initialChildSize: .27,
-          minChildSize: .17,
-          maxChildSize: .94,
-          snap: true,
-          snapSizes: const [.17, .5, .94],
-          builder: (context, scrollController) {
-            return Material(
-              color: Colors.white,
-              elevation: 12,
-              shadowColor: const Color(0x330F1720),
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(26),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: _selectedPlace == null
-                  ? _ExplorePlaceListSheet(
-                      key: const ValueKey('explore-place-list-sheet'),
-                      controller: scrollController,
-                      places: places,
-                      onSelected: _selectPlace,
-                    )
-                  : _ExplorePlaceDetailSheet(
-                      key: ValueKey(
-                        'explore-place-detail-${_selectedPlace!.id}',
-                      ),
-                      controller: scrollController,
-                      place: _selectedPlace!,
-                      saved: widget.appState.isPlaceSaved(_selectedPlace!.id),
-                      onBack: _showPlaceList,
-                      onSave: () => _togglePlace(_selectedPlace!),
+        Positioned.fill(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              const searchHeight = 56.0;
+              const headerGap = 10.0;
+              const tagHeight = 42.0;
+              const sheetGap = 12.0;
+              final topInset = MediaQuery.paddingOf(context).top;
+              final reservedTop =
+                  topInset +
+                  12 +
+                  searchHeight +
+                  headerGap +
+                  tagHeight +
+                  sheetGap;
+              final maxSheetSize =
+                  ((constraints.maxHeight - reservedTop) /
+                          constraints.maxHeight)
+                      .clamp(.55, .90)
+                      .toDouble();
+
+              return DraggableScrollableSheet(
+                key: const ValueKey('explore-bottom-sheet'),
+                controller: _sheetController,
+                initialChildSize: .27,
+                minChildSize: .17,
+                maxChildSize: maxSheetSize,
+                snap: true,
+                snapSizes: [.17, .5, maxSheetSize],
+                builder: (context, scrollController) {
+                  return Material(
+                    color: Colors.white,
+                    elevation: 12,
+                    shadowColor: const Color(0x330F1720),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(26),
                     ),
-            );
-          },
+                    clipBehavior: Clip.antiAlias,
+                    child: _selectedPlace == null
+                        ? _ExplorePlaceListSheet(
+                            key: const ValueKey('explore-place-list-sheet'),
+                            controller: scrollController,
+                            places: places,
+                            onSelected: _selectPlace,
+                          )
+                        : _ExplorePlaceDetailSheet(
+                            key: ValueKey(
+                              'explore-place-detail-${_selectedPlace!.id}',
+                            ),
+                            controller: scrollController,
+                            place: _selectedPlace!,
+                            saved: widget.appState.isPlaceSaved(
+                              _selectedPlace!.id,
+                            ),
+                            onBack: _showPlaceList,
+                            onSave: () => _togglePlace(_selectedPlace!),
+                          ),
+                  );
+                },
+              );
+            },
+          ),
         ),
       ],
     );

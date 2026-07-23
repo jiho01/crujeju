@@ -457,6 +457,33 @@ void main() {
     expect(placeReviewTitle, findsOneWidget);
   });
 
+  testWidgets('둘러보기 목록을 펼쳐도 검색 태그 아래에서 멈춘다', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final appState = AppState();
+    addTearDown(appState.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: MainShell(appState: appState),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('bottom-tab-2')));
+    await tester.pumpAndSettle();
+
+    final tag = find.byKey(const ValueKey('explore-category-전체'));
+    final list = find.byKey(const ValueKey('explore-place-list-scroll'));
+    await tester.drag(list, const Offset(0, -900));
+    await tester.pumpAndSettle();
+
+    final tagBottom = tester.getBottomLeft(tag).dy;
+    final sheetTop = tester.getTopLeft(list).dy;
+    expect(sheetTop, greaterThanOrEqualTo(tagBottom + 10));
+    expect(sheetTop, lessThanOrEqualTo(tagBottom + 14));
+  });
+
   testWidgets('발급된 홈 카드 요약에 카드 번호와 잔액을 표시한다', (tester) async {
     final appState = AppState()..issueCard(200000);
     addTearDown(appState.dispose);
