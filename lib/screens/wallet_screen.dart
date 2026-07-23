@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../data/app_data.dart';
 import '../models/models.dart';
@@ -561,8 +562,8 @@ class _PickupWallet extends StatelessWidget {
                           child: Image.asset(
                             key: const ValueKey('pickup-location-image'),
                             cruise.port == '강정항'
-                                ? 'assets/images/place_saeyeongyo.jpg'
-                                : 'assets/images/place_dongmun.jpg',
+                                ? 'assets/images/pickup_store_gangjeong.png'
+                                : 'assets/images/pickup_terminal_jeju.png',
                             fit: BoxFit.cover,
                             errorBuilder: (_, _, _) =>
                                 const EmptyImageFallback(),
@@ -581,7 +582,7 @@ class _PickupWallet extends StatelessWidget {
                               borderRadius: BorderRadius.circular(999),
                             ),
                             child: Text(
-                              '항구 인근 참고 이미지',
+                              '카드 발급기 위치 안내',
                               style: Theme.of(context).textTheme.labelSmall,
                             ),
                           ),
@@ -762,9 +763,9 @@ class _PickupMiniMap extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       key: const ValueKey('pickup-location-map'),
-      height: 154,
+      height: 190,
       decoration: BoxDecoration(
-        color: AppColors.mapBlue,
+        color: const Color(0xFFF4F8FC),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.line),
       ),
@@ -775,8 +776,8 @@ class _PickupMiniMap extends StatelessWidget {
             child: CustomPaint(painter: _PickupMapPainter()),
           ),
           Positioned(
-            left: 18,
-            top: 18,
+            left: 14,
+            top: 12,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
               decoration: BoxDecoration(
@@ -784,44 +785,89 @@ class _PickupMiniMap extends StatelessWidget {
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Text(
-                '$port 여객터미널',
+                '$port 터미널 1층 안내도',
                 style: Theme.of(context).textTheme.labelSmall,
               ),
             ),
           ),
-          Positioned(
-            right: 28,
-            bottom: 25,
-            child: Column(
-              children: [
-                Container(
-                  width: 38,
-                  height: 38,
-                  decoration: const BoxDecoration(
-                    color: AppColors.brand,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Color(0x293182F6),
-                        blurRadius: 10,
-                        offset: Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.location_on_rounded,
-                    color: Colors.white,
-                    size: 21,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '1번 키오스크',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.labelSmall?.copyWith(color: AppColors.brandNavy),
-                ),
-              ],
+          const Align(
+            alignment: Alignment(-0.72, 0.65),
+            child: _MapFacility(
+              icon: Icons.sensor_door_outlined,
+              label: '입항장 출입구',
+            ),
+          ),
+          const Align(
+            alignment: Alignment(-0.38, -0.18),
+            child: _MapFacility(
+              icon: Icons.info_outline_rounded,
+              label: '관광안내소',
+            ),
+          ),
+          const Align(
+            alignment: Alignment(0.48, -0.2),
+            child: _MapFacility(
+              icon: Icons.storefront_outlined,
+              label: '편의점 데스크',
+            ),
+          ),
+          const Align(
+            alignment: Alignment(0.63, 0.65),
+            child: _MapFacility(
+              icon: Icons.credit_card_rounded,
+              label: '1번 키오스크',
+              highlighted: true,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MapFacility extends StatelessWidget {
+  const _MapFacility({
+    required this.icon,
+    required this.label,
+    this.highlighted = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool highlighted;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        color: highlighted ? AppColors.brand : Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: highlighted ? AppColors.brand : AppColors.line,
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x120F1720),
+            blurRadius: 6,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 15,
+            color: highlighted ? Colors.white : AppColors.textSecondary,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: highlighted ? Colors.white : AppColors.textSecondary,
+              fontSize: 10,
             ),
           ),
         ],
@@ -835,43 +881,57 @@ class _PickupMapPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final land = Paint()..color = const Color(0xFFE8F1E5);
-    final landPath = Path()
-      ..moveTo(0, size.height * .28)
-      ..quadraticBezierTo(size.width * .4, size.height * .08, size.width, .0)
-      ..lineTo(size.width, size.height)
-      ..lineTo(0, size.height)
-      ..close();
-    canvas.drawPath(landPath, land);
+    final roomPaint = Paint()..color = Colors.white;
+    final wallPaint = Paint()
+      ..color = const Color(0xFFD8E2EC)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+    final terminal = RRect.fromRectAndRadius(
+      Rect.fromLTWH(
+        size.width * .04,
+        size.height * .25,
+        size.width * .92,
+        size.height * .66,
+      ),
+      const Radius.circular(14),
+    );
+    canvas
+      ..drawRRect(terminal, roomPaint)
+      ..drawRRect(terminal, wallPaint)
+      ..drawLine(
+        Offset(size.width * .5, size.height * .25),
+        Offset(size.width * .5, size.height * .62),
+        wallPaint,
+      )
+      ..drawLine(
+        Offset(size.width * .18, size.height * .62),
+        Offset(size.width * .82, size.height * .62),
+        wallPaint,
+      );
 
-    final road = Paint()
-      ..color = Colors.white
+    final routePaint = Paint()
+      ..color = AppColors.brand
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
-      ..strokeWidth = 5;
-    final route = Path()
-      ..moveTo(size.width * .05, size.height * .76)
-      ..cubicTo(
-        size.width * .33,
-        size.height * .45,
-        size.width * .62,
-        size.height * .8,
-        size.width * .9,
-        size.height * .47,
-      );
-    canvas.drawPath(route, road);
-
-    final minorRoad = Paint()
-      ..color = const Color(0x558B95A1)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2;
-    for (var i = 1; i < 5; i++) {
-      canvas.drawLine(
-        Offset(size.width * i / 6, size.height * .28),
-        Offset(size.width * (i + 1) / 6, size.height),
-        minorRoad,
-      );
+      ..strokeWidth = 2.5;
+    final routePoints = [
+      Offset(size.width * .18, size.height * .8),
+      Offset(size.width * .38, size.height * .72),
+      Offset(size.width * .58, size.height * .78),
+      Offset(size.width * .76, size.height * .78),
+    ];
+    for (var i = 0; i < routePoints.length - 1; i++) {
+      final start = routePoints[i];
+      final end = routePoints[i + 1];
+      for (var step = 0; step < 6; step += 2) {
+        canvas.drawLine(
+          Offset.lerp(start, end, step / 6)!,
+          Offset.lerp(start, end, (step + 1) / 6)!,
+          routePaint,
+        );
+      }
     }
+    canvas.drawCircle(routePoints.last, 5, Paint()..color = AppColors.brand);
   }
 
   @override
@@ -938,15 +998,19 @@ class _CardApplicationScreen extends StatefulWidget {
 
 class _CardApplicationScreenState extends State<_CardApplicationScreen> {
   final PageController _pageController = PageController();
+  final TextEditingController _amountController = TextEditingController(
+    text: '100000',
+  );
   int _step = 0;
   String _paymentMethod = '해외 신용카드';
-  int _chargeAmount = 200000;
+  int _chargeAmount = 100000;
   bool _agreed = false;
   bool _submitting = false;
 
   @override
   void dispose() {
     _pageController.dispose();
+    _amountController.dispose();
     super.dispose();
   }
 
@@ -974,7 +1038,11 @@ class _CardApplicationScreenState extends State<_CardApplicationScreen> {
               ),
               _ApplicationBottomAction(
                 step: _step,
-                enabled: _step < 3 || _agreed,
+                enabled: switch (_step) {
+                  2 => _chargeAmount >= 10000,
+                  3 => _agreed,
+                  _ => true,
+                },
                 loading: _submitting,
                 onPressed: _goNext,
               ),
@@ -1157,8 +1225,7 @@ class _CardApplicationScreenState extends State<_CardApplicationScreen> {
     return _stepLayout(
       eyebrow: '충전금액',
       title: '얼마를 충전할까요?',
-      description:
-          '${widget.appState.travelerCount}명 여행 일정과 관심 분야를 기준으로 계산했어요.',
+      description: '필요한 금액을 직접 입력하거나 아래 금액을 빠르게 선택하세요.',
       children: [
         Center(
           child: Text(
@@ -1169,11 +1236,30 @@ class _CardApplicationScreenState extends State<_CardApplicationScreen> {
           ),
         ),
         const SizedBox(height: 24),
+        TextField(
+          key: const ValueKey('card-charge-amount-input'),
+          controller: _amountController,
+          keyboardType: TextInputType.number,
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            LengthLimitingTextInputFormatter(7),
+          ],
+          onChanged: (value) {
+            setState(() => _chargeAmount = int.tryParse(value) ?? 0);
+          },
+          decoration: const InputDecoration(
+            labelText: '직접 입력',
+            hintText: '충전할 금액을 입력하세요',
+            prefixIcon: Icon(Icons.edit_outlined),
+            suffixText: '원',
+          ),
+        ),
+        const SizedBox(height: 14),
         Row(
-          children: [100000, 200000, 300000].map((amount) {
+          children: [100000, 500000, 1000000].map((amount) {
             return Expanded(
               child: Padding(
-                padding: EdgeInsets.only(right: amount == 300000 ? 0 : 8),
+                padding: EdgeInsets.only(right: amount == 1000000 ? 0 : 8),
                 child: ChoiceChip(
                   label: SizedBox(
                     width: double.infinity,
@@ -1184,38 +1270,17 @@ class _CardApplicationScreenState extends State<_CardApplicationScreen> {
                   ),
                   selected: _chargeAmount == amount,
                   showCheckmark: false,
-                  onSelected: (_) => setState(() => _chargeAmount = amount),
+                  onSelected: (_) {
+                    _amountController.text = amount.toString();
+                    _amountController.selection = TextSelection.collapsed(
+                      offset: _amountController.text.length,
+                    );
+                    setState(() => _chargeAmount = amount);
+                  },
                 ),
               ),
             );
           }).toList(),
-        ),
-        const SizedBox(height: 22),
-        SurfaceCard(
-          color: AppColors.brandWeak,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Icon(Icons.auto_awesome_rounded, color: AppColors.brand),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'AI 추천금액 200,000원',
-                      style: Theme.of(context).textTheme.labelMedium,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '식사, 카페, 기념품 구입을 포함해도 여유 있는 금액이에요.',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
         ),
       ],
     );
@@ -1457,9 +1522,13 @@ class _PrepaidCard extends StatelessWidget {
         aspectRatio: 1.56,
         child: Container(
           decoration: BoxDecoration(
-            color: const Color(0xFFF3F7FC),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFFE8F3FF), Color(0xFFCFE4FF)],
+            ),
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: const Color(0xFFDDE8F5)),
+            border: Border.all(color: const Color(0xFFBFD9F6)),
           ),
           clipBehavior: Clip.antiAlias,
           child: Stack(
@@ -1473,7 +1542,7 @@ class _PrepaidCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: AppColors.brand.withValues(alpha: .07),
+                      color: AppColors.brand.withValues(alpha: .13),
                       width: 38,
                     ),
                   ),

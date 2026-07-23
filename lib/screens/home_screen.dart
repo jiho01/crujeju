@@ -694,13 +694,15 @@ class _GuidePreview extends StatelessWidget {
       child: Row(
         children: [
           SizedBox(
-            width: 112,
-            height: 148,
-            child: Image.asset(
-              guide.image,
-              fit: BoxFit.cover,
-              alignment: const Alignment(0, -0.45),
-              errorBuilder: (_, _, _) => const EmptyImageFallback(),
+            width: 118,
+            child: AspectRatio(
+              aspectRatio: 4 / 5,
+              child: Image.asset(
+                guide.image,
+                fit: BoxFit.cover,
+                alignment: Alignment.topCenter,
+                errorBuilder: (_, _, _) => const EmptyImageFallback(),
+              ),
             ),
           ),
           Expanded(

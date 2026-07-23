@@ -534,7 +534,7 @@ class _PlaceCard extends StatelessWidget {
   }
 }
 
-class _MapView extends StatelessWidget {
+class _MapView extends StatefulWidget {
   const _MapView({
     required this.places,
     required this.selectedPlace,
@@ -561,103 +561,229 @@ class _MapView extends StatelessWidget {
   ];
 
   @override
+  State<_MapView> createState() => _MapViewState();
+}
+
+class _MapViewState extends State<_MapView> {
+  final TransformationController _mapController = TransformationController();
+  bool _previewVisible = false;
+
+  @override
+  void dispose() {
+    _mapController.dispose();
+    super.dispose();
+  }
+
+  void _zoom(double factor) {
+    final currentScale = _mapController.value.getMaxScaleOnAxis();
+    final targetScale = (currentScale * factor).clamp(.8, 3.0);
+    final nextTransform = _mapController.value.clone()
+      ..setEntry(0, 0, targetScale)
+      ..setEntry(1, 1, targetScale);
+    _mapController.value = nextTransform;
+  }
+
+  void _resetMap() {
+    _mapController.value = Matrix4.identity();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(24),
-        child: Stack(
-          children: [
-            Positioned.fill(child: CustomPaint(painter: _MapPainter())),
-            Positioned(
-              left: 14,
-              top: 14,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
+        child: LayoutBuilder(
+          builder: (context, constraints) => Stack(
+            children: [
+              Positioned.fill(
+                child: InteractiveViewer(
+                  transformationController: _mapController,
+                  minScale: .8,
+                  maxScale: 3,
+                  boundaryMargin: const EdgeInsets.all(180),
+                  panEnabled: true,
+                  scaleEnabled: true,
+                  child: SizedBox(
+                    width: constraints.maxWidth,
+                    height: constraints.maxHeight,
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: CustomPaint(painter: _MapPainter()),
+                        ),
+                        const Align(
+                          alignment: Alignment(-0.38, -0.48),
+                          child: _CruisePortMarker(label: '제주항', city: '제주시'),
+                        ),
+                        const Align(
+                          alignment: Alignment(-0.08, 0.42),
+                          child: _CruisePortMarker(label: '강정항', city: '서귀포'),
+                        ),
+                        for (var i = 0; i < widget.places.length; i++)
+                          Align(
+                            alignment: _MapView
+                                ._positions[i % _MapView._positions.length],
+                            child: _MapPhotoMarker(
+                              place: widget.places[i],
+                              selected:
+                                  widget.places[i].id ==
+                                  widget.selectedPlace.id,
+                              onTap: () {
+                                widget.onSelected(widget.places[i]);
+                                setState(() => _previewVisible = true);
+                              },
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
                 ),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(999),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x160F1720),
-                      blurRadius: 10,
-                      offset: Offset(0, 3),
+              ),
+              Positioned(
+                left: 14,
+                top: 14,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(999),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x160F1720),
+                        blurRadius: 10,
+                        offset: Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    '제주 전체 · 드래그로 이동',
+                    style: Theme.of(context).textTheme.labelMedium,
+                  ),
+                ),
+              ),
+              const Positioned(left: 14, top: 56, child: _MapHotLegend()),
+              Positioned(
+                right: 14,
+                top: 14,
+                child: Column(
+                  children: [
+                    _MapControl(
+                      key: const ValueKey('map-zoom-in'),
+                      icon: Icons.add_rounded,
+                      tooltip: '지도 확대',
+                      onTap: () => _zoom(1.35),
+                    ),
+                    SizedBox(height: 9),
+                    _MapControl(
+                      key: const ValueKey('map-zoom-out'),
+                      icon: Icons.remove_rounded,
+                      tooltip: '지도 축소',
+                      onTap: () => _zoom(1 / 1.35),
+                    ),
+                    const SizedBox(height: 9),
+                    _MapControl(
+                      key: const ValueKey('map-reset-position'),
+                      icon: Icons.center_focus_strong_rounded,
+                      tooltip: '지도 위치 초기화',
+                      onTap: _resetMap,
                     ),
                   ],
                 ),
-                child: Text(
-                  '제주 전체',
-                  style: Theme.of(context).textTheme.labelMedium,
+              ),
+              if (_previewVisible)
+                Positioned(
+                  left: 12,
+                  right: 12,
+                  bottom: 12,
+                  child: _MapPlacePreview(
+                    place: widget.selectedPlace,
+                    saved: widget.saved,
+                    onTap: () => widget.onDetail(widget.selectedPlace),
+                    onSave: widget.onSave,
+                  ),
                 ),
-              ),
-            ),
-            const Positioned(left: 14, top: 56, child: _MapHotLegend()),
-            const Positioned(
-              right: 14,
-              top: 14,
-              child: Column(
-                children: [
-                  _MapControl(icon: Icons.layers_outlined),
-                  SizedBox(height: 9),
-                  _MapControl(icon: Icons.my_location_rounded),
-                ],
-              ),
-            ),
-            for (var i = 0; i < places.length; i++)
-              Align(
-                alignment: _positions[i % _positions.length],
-                child: _MapPhotoMarker(
-                  place: places[i],
-                  selected: places[i].id == selectedPlace.id,
-                  onTap: () {
-                    onSelected(places[i]);
-                    onDetail(places[i]);
-                  },
-                ),
-              ),
-            Positioned(
-              left: 12,
-              right: 12,
-              bottom: 12,
-              child: _MapPlacePreview(
-                place: selectedPlace,
-                saved: saved,
-                onTap: () => onDetail(selectedPlace),
-                onSave: onSave,
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _MapControl extends StatelessWidget {
-  const _MapControl({required this.icon});
+class _CruisePortMarker extends StatelessWidget {
+  const _CruisePortMarker({required this.label, required this.city});
 
-  final IconData icon;
+  final String label;
+  final String city;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 42,
-      height: 42,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.circle,
-        boxShadow: [
+      padding: const EdgeInsets.fromLTRB(7, 5, 9, 5),
+      decoration: BoxDecoration(
+        color: AppColors.brandNavy,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white, width: 2),
+        boxShadow: const [
           BoxShadow(
-            color: Color(0x1C0F1720),
-            blurRadius: 10,
+            color: Color(0x29123A63),
+            blurRadius: 8,
             offset: Offset(0, 3),
           ),
         ],
       ),
-      child: Icon(icon, size: 20, color: AppColors.textSecondary),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.anchor_rounded, color: Colors.white, size: 14),
+          const SizedBox(width: 4),
+          Text(
+            '$label · $city',
+            style: Theme.of(
+              context,
+            ).textTheme.labelSmall?.copyWith(color: Colors.white, fontSize: 10),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MapControl extends StatelessWidget {
+  const _MapControl({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+    super.key,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.white,
+        shape: const CircleBorder(),
+        elevation: 3,
+        shadowColor: const Color(0x1C0F1720),
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const CircleBorder(),
+          child: SizedBox(
+            width: 42,
+            height: 42,
+            child: Icon(icon, size: 20, color: AppColors.textSecondary),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -748,7 +874,7 @@ class _MapPhotoMarker extends StatelessWidget {
     return Semantics(
       button: true,
       label:
-          '${place.name} 상세 보기, ${_hotSpotLabel(place)}, 최근 결제 ${place.paymentCount}건',
+          '${place.name} 정보 보기, ${_hotSpotLabel(place)}, 최근 결제 ${place.paymentCount}건',
       child: GestureDetector(
         key: ValueKey('map-marker-${place.id}'),
         onTap: onTap,
@@ -834,6 +960,7 @@ class _MapPlacePreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
+      key: const ValueKey('map-place-preview'),
       color: Colors.white,
       borderRadius: BorderRadius.circular(18),
       clipBehavior: Clip.antiAlias,

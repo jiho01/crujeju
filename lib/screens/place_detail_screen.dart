@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../data/app_data.dart';
 import '../models/models.dart';
 import '../state/app_state.dart';
 import '../theme/app_theme.dart';
@@ -24,6 +25,9 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final saved = widget.appState.isPlaceSaved(widget.place.id);
+    final reviews = AppData.placeReviews
+        .where((review) => review.placeId == widget.place.id)
+        .toList();
     return Scaffold(
       backgroundColor: AppColors.surfaceSecondary,
       body: AppPage(
@@ -200,27 +204,15 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
             ),
             SliverToBoxAdapter(
               child: _PlaceSection(
-                title: '최근 크루즈 여행자 후기',
-                child: SurfaceCard(
-                  color: AppColors.surfaceSecondary,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const RatingLabel(rating: 5),
-                      const SizedBox(height: 10),
-                      Text(
-                        '사진으로 본 것보다 풍경이 더 좋았어요. 이동시간이 정확해서 짧은 기항 일정에도 부담이 없었어요.',
-                        style: Theme.of(context).textTheme.bodyMedium,
+                title: '최근 크루즈 여행자 후기 ${reviews.length}',
+                child: Column(
+                  children: [
+                    for (final review in reviews)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _PlaceReviewCard(review: review),
                       ),
-                      const SizedBox(height: 10),
-                      Text(
-                        'Liam T. · 3주 전',
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: AppColors.textTertiary,
-                        ),
-                      ),
-                    ],
-                  ),
+                  ],
                 ),
               ),
             ),
@@ -247,6 +239,54 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
       widget.appState.isPlaceSaved(widget.place.id)
           ? '${widget.place.name}을 내 여행에 담았어요'
           : '${widget.place.name}을 내 여행에서 뺐어요',
+    );
+  }
+}
+
+class _PlaceReviewCard extends StatelessWidget {
+  const _PlaceReviewCard({required this.review});
+
+  final PlaceReview review;
+
+  @override
+  Widget build(BuildContext context) {
+    return SurfaceCard(
+      color: AppColors.surfaceSecondary,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              RatingLabel(rating: review.rating.toDouble()),
+              const Spacer(),
+              Text(review.date, style: Theme.of(context).textTheme.bodySmall),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(review.content, style: Theme.of(context).textTheme.bodyMedium),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Text(
+                countryFlag(review.country),
+                style: const TextStyle(fontSize: 17),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                review.country,
+                style: Theme.of(context).textTheme.labelSmall,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '· ${review.author}',
+                style: Theme.of(
+                  context,
+                ).textTheme.labelSmall?.copyWith(color: AppColors.textTertiary),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

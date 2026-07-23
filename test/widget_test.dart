@@ -68,6 +68,16 @@ void main() {
     expect(find.text('이전'), findsNothing);
     expect(find.textContaining('기본 정보를 설정해요'), findsOneWidget);
 
+    await tester.tap(find.text('English'));
+    await tester.pump();
+    expect(find.text('Basic settings'), findsOneWidget);
+    expect(find.textContaining('Set up the basics'), findsOneWidget);
+    expect(find.text('Next'), findsOneWidget);
+
+    await tester.tap(find.text('한국어'));
+    await tester.pump();
+    expect(find.textContaining('기본 정보를 설정해요'), findsOneWidget);
+
     await tester.tap(find.text('다음'));
     await tester.pumpAndSettle();
     expect(find.text('2/3'), findsOneWidget);
@@ -151,6 +161,14 @@ void main() {
     await tester.tap(find.text('다음'));
     await tester.pumpAndSettle();
     expect(find.text('3/4'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('card-charge-amount-input')),
+      findsOneWidget,
+    );
+    expect(find.text('10만원'), findsOneWidget);
+    expect(find.text('50만원'), findsOneWidget);
+    expect(find.text('100만원'), findsOneWidget);
+    expect(find.textContaining('AI 추천금액'), findsNothing);
 
     await tester.tap(find.text('다음'));
     await tester.pumpAndSettle();
@@ -170,22 +188,23 @@ void main() {
     expect(find.byKey(const ValueKey('pickup-location-image')), findsOneWidget);
     expect(find.byKey(const ValueKey('pickup-location-map')), findsOneWidget);
     expect(find.text('5412 •••• •••• 8026'), findsNothing);
-    expect(find.text('200,000원'), findsNothing);
+    expect(find.text('100,000원'), findsNothing);
 
     final pickupButton = find.byKey(const ValueKey('card-pickup-complete'));
     await tester.scrollUntilVisible(
       pickupButton,
-      450,
+      350,
       scrollable: find.byType(Scrollable).last,
     );
+    await tester.pumpAndSettle();
     await tester.tap(pickupButton);
     await tester.pumpAndSettle();
 
     expect(appState.cardIssued, isTrue);
     expect(appState.cardAwaitingPickup, isFalse);
-    expect(appState.cardBalance, 200000);
+    expect(appState.cardBalance, 100000);
     expect(find.text('사용 가능한 금액'), findsOneWidget);
-    expect(find.text('200,000원'), findsOneWidget);
+    expect(find.text('100,000원'), findsOneWidget);
     expect(find.text('잔액 동기화 중'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('card-sync-status')));
@@ -263,7 +282,7 @@ void main() {
     }
   });
 
-  testWidgets('둘러보기 지도 사진 마커에서 장소 상세로 이동한다', (tester) async {
+  testWidgets('둘러보기 지도 마커에서 정보 확인 후 장소 상세로 이동한다', (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final appState = AppState();
@@ -285,14 +304,31 @@ void main() {
     expect(find.text('결제 집중'), findsOneWidget);
     expect(find.text('인기 상승'), findsOneWidget);
     expect(find.text('꾸준한 인기'), findsOneWidget);
-    expect(find.text('최근 결제 214건'), findsOneWidget);
+    expect(find.text('최근 결제 214건'), findsNothing);
+    expect(find.text('제주항 · 제주시'), findsOneWidget);
+    expect(find.text('강정항 · 서귀포'), findsOneWidget);
+    expect(find.byKey(const ValueKey('map-zoom-in')), findsOneWidget);
+    expect(find.byKey(const ValueKey('map-zoom-out')), findsOneWidget);
     expect(find.byIcon(Icons.local_fire_department_rounded), findsWidgets);
 
     final marker = find.byKey(const ValueKey('map-marker-saeyeongyo'));
     expect(marker, findsOneWidget);
     await tester.tap(marker);
     await tester.pumpAndSettle();
+    expect(find.text('최근 결제 214건'), findsOneWidget);
+    expect(find.byKey(const ValueKey('map-place-preview')), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('map-place-preview')));
+    await tester.pumpAndSettle();
     expect(find.text('새연교'), findsWidgets);
+    expect(find.byIcon(Icons.arrow_back_rounded), findsOneWidget);
+    final placeReviewTitle = find.text('최근 크루즈 여행자 후기 3');
+    await tester.scrollUntilVisible(
+      placeReviewTitle,
+      450,
+      scrollable: find.byType(Scrollable).last,
+    );
+    expect(find.text('최근 크루즈 여행자 후기 3'), findsOneWidget);
   });
 
   testWidgets('발급된 홈 카드 요약에 카드 번호와 잔액을 표시한다', (tester) async {
@@ -405,7 +441,8 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('review-rating-filter')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('5점'));
+    expect(find.byKey(const ValueKey('review-rating-slider')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('review-rating-apply')));
     await tester.pumpAndSettle();
     expect(find.text('미국'), findsWidgets);
     expect(find.text('5점'), findsOneWidget);

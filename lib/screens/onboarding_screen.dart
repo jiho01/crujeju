@@ -60,6 +60,87 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     ('택시', '호출형', Icons.local_taxi_outlined),
   ];
 
+  ({
+    String eyebrow,
+    String title,
+    String description,
+    String language,
+    String currency,
+    String travelers,
+    String travelerTitle,
+    String travelerDescription,
+    String travelerUnit,
+    String next,
+  })
+  get _basicCopy {
+    return switch (_language) {
+      'English' => (
+        eyebrow: 'Basic settings',
+        title: 'Set up the basics\nfor your trip',
+        description: 'You can change the language and currency later.',
+        language: 'App language',
+        currency: 'Display currency',
+        travelers: 'Number of travelers',
+        travelerTitle: 'Traveling together',
+        travelerDescription: 'Please include yourself.',
+        travelerUnit: '',
+        next: 'Next',
+      ),
+      '中文' => (
+        eyebrow: '基本设置',
+        title: '设置适合行程的\n基本信息',
+        description: '语言和货币可以稍后更改。',
+        language: '使用语言',
+        currency: '显示货币',
+        travelers: '旅行人数',
+        travelerTitle: '同行人数',
+        travelerDescription: '请选择包括本人在内的人数。',
+        travelerUnit: '人',
+        next: '下一步',
+      ),
+      '日本語' => (
+        eyebrow: '基本設定',
+        title: '旅行に合わせて\n基本情報を設定',
+        description: '言語と通貨は後から変更できます。',
+        language: '使用言語',
+        currency: '表示通貨',
+        travelers: '旅行人数',
+        travelerTitle: '一緒に旅行する人数',
+        travelerDescription: 'ご本人を含めて選択してください。',
+        travelerUnit: '名',
+        next: '次へ',
+      ),
+      _ => (
+        eyebrow: '기본 설정',
+        title: '여행에 맞게\n기본 정보를 설정해요',
+        description: '언어와 통화는 나중에 설정에서 바꿀 수 있어요.',
+        language: '사용 언어',
+        currency: '표시 통화',
+        travelers: '여행 인원',
+        travelerTitle: '함께 여행하는 인원',
+        travelerDescription: '본인을 포함해 선택해 주세요',
+        travelerUnit: '명',
+        next: '다음',
+      ),
+    };
+  }
+
+  String _currencyName(String code) {
+    const names = {
+      'KRW': ('대한민국 원', 'Korean won', '韩元', '韓国ウォン'),
+      'USD': ('미국 달러', 'US dollar', '美元', '米ドル'),
+      'JPY': ('일본 엔', 'Japanese yen', '日元', '日本円'),
+      'CNY': ('중국 위안', 'Chinese yuan', '人民币', '中国元'),
+    };
+    final name = names[code]!;
+    return switch (_language) {
+      'English' => name.$2,
+      '中文' => name.$3,
+      '日本語' => name.$4,
+      _ => name.$1,
+    };
+  }
+
   List<CruiseOption> get _visibleCruises {
     return AppData.cruises.where((cruise) {
       final matchesPort = cruise.port == _port;
@@ -88,6 +169,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final basicCopy = _basicCopy;
     return Scaffold(
       backgroundColor: AppColors.surfaceSecondary,
       body: AppPage(
@@ -111,6 +193,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ),
                 _BottomNavigation(
                   step: _step,
+                  nextLabel: _step == 0 ? basicCopy.next : null,
                   enabled: _canContinue && !_submitting,
                   loading: _submitting,
                   onPrevious: _goPrevious,
@@ -125,6 +208,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Widget _buildBasicStep() {
+    final copy = _basicCopy;
     return SingleChildScrollView(
       key: const PageStorageKey('onboarding-basic'),
       padding: const EdgeInsets.fromLTRB(20, 26, 20, 28),
@@ -132,12 +216,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _StepTitle(
-            eyebrow: '기본 설정',
-            title: '여행에 맞게\n기본 정보를 설정해요',
-            description: '언어와 통화는 나중에 설정에서 바꿀 수 있어요.',
+            eyebrow: copy.eyebrow,
+            title: copy.title,
+            description: copy.description,
           ),
           const SizedBox(height: 34),
-          _FieldLabel(label: '사용 언어', value: _language),
+          _FieldLabel(label: copy.language, value: _language),
           const SizedBox(height: 12),
           LayoutBuilder(
             builder: (context, constraints) {
@@ -160,7 +244,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             },
           ),
           const SizedBox(height: 28),
-          _FieldLabel(label: '표시 통화', value: _currency),
+          _FieldLabel(label: copy.currency, value: _currency),
           const SizedBox(height: 12),
           LayoutBuilder(
             builder: (context, constraints) {
@@ -173,7 +257,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     width: width,
                     child: _SelectionTile(
                       title: currency.$1,
-                      subtitle: currency.$2,
+                      subtitle: _currencyName(currency.$1),
                       trailing: currency.$3,
                       selected: _currency == currency.$1,
                       onTap: () => setState(() => _currency = currency.$1),
@@ -184,10 +268,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             },
           ),
           const SizedBox(height: 28),
-          const _FieldLabel(label: '여행 인원'),
+          _FieldLabel(label: copy.travelers),
           const SizedBox(height: 12),
           _TravelerCounter(
             count: _travelerCount,
+            title: copy.travelerTitle,
+            description: copy.travelerDescription,
+            unit: copy.travelerUnit,
             onDecrease: _travelerCount <= 1
                 ? null
                 : () => setState(() => _travelerCount--),
@@ -630,11 +717,17 @@ class _SelectionTile extends StatelessWidget {
 class _TravelerCounter extends StatelessWidget {
   const _TravelerCounter({
     required this.count,
+    required this.title,
+    required this.description,
+    required this.unit,
     required this.onDecrease,
     required this.onIncrease,
   });
 
   final int count;
+  final String title;
+  final String description;
+  final String unit;
   final VoidCallback? onDecrease;
   final VoidCallback? onIncrease;
 
@@ -649,15 +742,9 @@ class _TravelerCounter extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  '함께 여행하는 인원',
-                  style: Theme.of(context).textTheme.labelMedium,
-                ),
+                Text(title, style: Theme.of(context).textTheme.labelMedium),
                 const SizedBox(height: 2),
-                Text(
-                  '본인을 포함해 선택해 주세요',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
+                Text(description, style: Theme.of(context).textTheme.bodySmall),
               ],
             ),
           ),
@@ -674,7 +761,7 @@ class _TravelerCounter extends StatelessWidget {
           SizedBox(
             width: 48,
             child: Text(
-              '$count명',
+              '$count$unit',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
                 fontFeatures: const [FontFeature.tabularFigures()],
@@ -1011,6 +1098,7 @@ class _IconSelectionTile extends StatelessWidget {
 class _BottomNavigation extends StatelessWidget {
   const _BottomNavigation({
     required this.step,
+    required this.nextLabel,
     required this.enabled,
     required this.loading,
     required this.onPrevious,
@@ -1018,6 +1106,7 @@ class _BottomNavigation extends StatelessWidget {
   });
 
   final int step;
+  final String? nextLabel;
   final bool enabled;
   final bool loading;
   final VoidCallback onPrevious;
@@ -1039,7 +1128,7 @@ class _BottomNavigation extends StatelessWidget {
           : Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(step == 2 ? '여행 준비 시작하기' : '다음'),
+                Text(step == 2 ? '여행 준비 시작하기' : nextLabel ?? '다음'),
                 const SizedBox(width: 6),
                 const Icon(Icons.arrow_forward_rounded, size: 19),
               ],

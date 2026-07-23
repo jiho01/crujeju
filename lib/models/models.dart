@@ -138,6 +138,24 @@ class Place {
   final bool guidePick;
 }
 
+class PlaceReview {
+  const PlaceReview({
+    required this.placeId,
+    required this.author,
+    required this.country,
+    required this.rating,
+    required this.date,
+    required this.content,
+  });
+
+  final String placeId;
+  final String author;
+  final String country;
+  final int rating;
+  final String date;
+  final String content;
+}
+
 class PaymentRecord {
   const PaymentRecord({
     required this.store,

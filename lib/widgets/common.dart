@@ -428,3 +428,19 @@ class DetailInfoRow extends StatelessWidget {
     );
   }
 }
+
+String countryFlag(String country) {
+  return switch (country) {
+    '대한민국' => '🇰🇷',
+    '미국' => '🇺🇸',
+    '캐나다' => '🇨🇦',
+    '중국' => '🇨🇳',
+    '일본' => '🇯🇵',
+    '싱가포르' => '🇸🇬',
+    '호주' => '🇦🇺',
+    '영국' => '🇬🇧',
+    '프랑스' => '🇫🇷',
+    '독일' => '🇩🇪',
+    _ => '🌐',
+  };
+}

@@ -234,7 +234,9 @@ class _GuideDetailScreenState extends State<GuideDetailScreen> {
                       children: [
                         _ReviewFilterButton(
                           key: const ValueKey('review-country-filter'),
-                          label: _reviewCountry ?? '국가',
+                          label: _reviewCountry == null
+                              ? '국가'
+                              : '${countryFlag(_reviewCountry!)} $_reviewCountry',
                           selected: _reviewCountry != null,
                           onTap: () => _showCountryFilter(context, countries),
                         ),
@@ -350,19 +352,103 @@ class _GuideDetailScreenState extends State<GuideDetailScreen> {
       options: countries,
       selected: _reviewCountry,
       labelBuilder: (country) => country,
+      leadingBuilder: (country) =>
+          Text(countryFlag(country), style: const TextStyle(fontSize: 22)),
       onSelected: (country) => setState(() => _reviewCountry = country),
     );
   }
 
   void _showRatingFilter(BuildContext context) {
-    _showReviewFilterSheet<int>(
+    var draftRating = (_reviewRating ?? 5).toDouble();
+    showModalBottomSheet<void>(
       context: context,
-      title: '후기 별점',
-      allLabel: '전체 별점',
-      options: const [5, 4, 3],
-      selected: _reviewRating,
-      labelBuilder: (rating) => '$rating점',
-      onSelected: (rating) => setState(() => _reviewRating = rating),
+      useSafeArea: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          final rating = draftRating.round();
+          return SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 18),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '후기 별점',
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '좌우로 드래그해 1점부터 5점까지 선택하세요.',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Center(
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: List.generate(
+                            5,
+                            (index) => Icon(
+                              index < rating
+                                  ? Icons.star_rounded
+                                  : Icons.star_border_rounded,
+                              color: AppColors.warning,
+                              size: 30,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '$rating점',
+                          style: Theme.of(context).textTheme.headlineMedium,
+                        ),
+                      ],
+                    ),
+                  ),
+                  Slider(
+                    key: const ValueKey('review-rating-slider'),
+                    value: draftRating,
+                    min: 1,
+                    max: 5,
+                    divisions: 4,
+                    label: '$rating점',
+                    onChanged: (value) =>
+                        setSheetState(() => draftRating = value),
+                  ),
+                  Row(
+                    children: [
+                      TextButton(
+                        onPressed: () {
+                          setState(() => _reviewRating = null);
+                          Navigator.pop(sheetContext);
+                        },
+                        child: const Text('전체 별점'),
+                      ),
+                      const Spacer(),
+                      SizedBox(
+                        width: 132,
+                        child: FilledButton(
+                          key: const ValueKey('review-rating-apply'),
+                          onPressed: () {
+                            setState(() => _reviewRating = rating);
+                            Navigator.pop(sheetContext);
+                          },
+                          child: const Text('적용'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -373,6 +459,7 @@ class _GuideDetailScreenState extends State<GuideDetailScreen> {
     required List<T> options,
     required T? selected,
     required String Function(T value) labelBuilder,
+    Widget Function(T value)? leadingBuilder,
     required ValueChanged<T?> onSelected,
   }) {
     showModalBottomSheet<void>(
@@ -402,6 +489,7 @@ class _GuideDetailScreenState extends State<GuideDetailScreen> {
               for (final option in options)
                 ListTile(
                   contentPadding: EdgeInsets.zero,
+                  leading: leadingBuilder?.call(option),
                   title: Text(labelBuilder(option)),
                   trailing: selected == option
                       ? const Icon(Icons.check_rounded, color: AppColors.brand)
@@ -503,9 +591,19 @@ class _GuideReviewCard extends StatelessWidget {
                   color: AppColors.surfaceSecondary,
                   borderRadius: BorderRadius.circular(999),
                 ),
-                child: Text(
-                  review.country,
-                  style: Theme.of(context).textTheme.labelSmall,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      countryFlag(review.country),
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      review.country,
+                      style: Theme.of(context).textTheme.labelSmall,
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(width: 8),
