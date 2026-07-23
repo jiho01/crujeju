@@ -48,11 +48,19 @@ class AppState extends ChangeNotifier {
         time: '화요일',
       ),
     ],
+    'deokchun': [
+      const GuideMessage(
+        text: '반갑습니다! 하고 싶은 것만 딱 말씀해 주세요. 복잡한 동선은 제가 시원하게 정리해 드릴게요.',
+        fromUser: false,
+        time: '오전 8:42',
+      ),
+    ],
   };
   final Map<String, int> _guideUnreadCounts = {
     'mina': 1,
     'jason': 2,
     'sora': 0,
+    'deokchun': 1,
   };
   final Map<String, GuideBooking> _guideBookings = {};
 

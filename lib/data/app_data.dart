@@ -132,6 +132,22 @@ abstract final class AppData {
       intro: '요즘 제주다운 공간과 오래 사랑받은 장소를 함께 소개해요. 취향에 맞는 카페도 놓치지 않아요.',
       style: '한 장소에서 충분히 머물며 기억에 남는 사진과 이야기를 만드는 여행을 좋아해요.',
     ),
+    Guide(
+      id: 'deokchun',
+      name: '김덕춘',
+      image: 'assets/images/guide_deokchun.png',
+      badge: '베테랑 로컬 가이드',
+      match: 94,
+      rating: 4.9,
+      reviewCount: 329,
+      languages: ['한국어', 'English'],
+      price: 145000,
+      tags: ['오름 트레킹', '바다 드라이브', '로컬 맛집'],
+      carSeats: 5,
+      intro: '결정은 빠르게, 분위기는 화끈하게! 복잡한 동선은 시원하게 정리하고 제주에서 꼭 볼 것만 제대로 보여드려요.',
+      style:
+          '좋은 곳은 과감하게 추천하고 붐비거나 날씨가 바뀌면 바로 다음 선택지를 제안해요. 설명은 핵심만, 여행의 텐션은 끝까지 살리는 편이에요.',
+    ),
   ];
 
   static const guideReviews = <GuideReview>[
@@ -242,6 +258,43 @@ abstract final class AppData {
       date: '1개월 전',
       cruise: 'MSC Bellissima',
       content: '관광객이 적은 카페를 소개해 줘서 여유롭게 쉴 수 있었어요. 차량도 깨끗했습니다.',
+    ),
+    GuideReview(
+      guideId: 'deokchun',
+      author: '정민수',
+      country: '대한민국',
+      rating: 5,
+      date: '4일 전',
+      cruise: 'Costa Serena',
+      content: '결정이 빠르고 설명이 군더더기 없어서 짧은 기항 시간을 제대로 썼어요. 분위기도 유쾌하게 이끌어 주셨습니다.',
+    ),
+    GuideReview(
+      guideId: 'deokchun',
+      author: 'Mark T.',
+      country: '미국',
+      rating: 5,
+      date: '1주 전',
+      cruise: 'Royal Princess',
+      content:
+          '오름과 해안도로를 시원하게 이어 준 코스가 최고였어요. 막히는 길은 바로 피해서 항구에도 여유 있게 도착했습니다.',
+    ),
+    GuideReview(
+      guideId: 'deokchun',
+      author: 'Chloe W.',
+      country: '캐나다',
+      rating: 4,
+      date: '3주 전',
+      cruise: 'Celebrity Millennium',
+      content: '추천이 확실해서 선택하기 편했고 현지 식당도 만족스러웠어요. 활동적인 여행을 좋아한다면 잘 맞을 것 같아요.',
+    ),
+    GuideReview(
+      guideId: 'deokchun',
+      author: '김연주',
+      country: '대한민국',
+      rating: 5,
+      date: '1개월 전',
+      cruise: 'MSC Bellissima',
+      content: '갑자기 비가 왔는데 망설임 없이 실내 코스로 바꿔 주셨어요. 솔직하고 시원시원한 안내가 정말 좋았습니다.',
     ),
   ];
 

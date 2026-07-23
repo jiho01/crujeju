@@ -275,6 +275,57 @@ void main() {
     expect(find.text('언어 · 2개'), findsOneWidget);
   });
 
+  testWidgets('김덕춘 가이드 프로필과 시원시원한 여행 스타일을 보여준다', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final appState = AppState();
+    addTearDown(appState.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: MainShell(appState: appState),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('bottom-tab-1')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const ValueKey('guide-search')), '김덕춘');
+    await tester.pumpAndSettle();
+
+    final guideCard = find.byKey(const ValueKey('guide-card-deokchun'));
+    expect(guideCard, findsOneWidget);
+    expect(find.text('베테랑 로컬 가이드'), findsOneWidget);
+    expect(find.text('오름 트레킹'), findsOneWidget);
+
+    await tester.tap(guideCard);
+    await tester.pumpAndSettle();
+    expect(find.text('김덕춘'), findsOneWidget);
+    expect(find.textContaining('결정은 빠르게, 분위기는 화끈하게!'), findsOneWidget);
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is Image &&
+            widget.image is AssetImage &&
+            (widget.image as AssetImage).assetName ==
+                'assets/images/guide_deokchun.png',
+      ),
+      findsOneWidget,
+    );
+    final styleText = find.textContaining('설명은 핵심만, 여행의 텐션은 끝까지');
+    await tester.scrollUntilVisible(
+      styleText,
+      350,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.pumpAndSettle();
+    expect(styleText, findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('guide-detail-chat-button')));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('복잡한 동선은 제가 시원하게 정리해 드릴게요.'), findsOneWidget);
+  });
+
   testWidgets('둘러보기를 제외한 핵심 탭에서 우측 하단 AI 도우미를 연다', (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));

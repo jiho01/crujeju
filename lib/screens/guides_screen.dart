@@ -502,6 +502,7 @@ class _GuideCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
+      key: ValueKey('guide-card-${guide.id}'),
       color: AppColors.surfaceSecondary,
       borderRadius: BorderRadius.circular(20),
       clipBehavior: Clip.antiAlias,
