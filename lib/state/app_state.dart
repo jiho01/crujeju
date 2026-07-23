@@ -23,16 +23,6 @@ class AppState extends ChangeNotifier {
         fromUser: false,
         time: '오전 9:18',
       ),
-      const GuideMessage(
-        text: '부모님과 함께라 걷는 거리가 짧은 코스를 원해요.',
-        fromUser: true,
-        time: '오전 9:24',
-      ),
-      const GuideMessage(
-        text: '새연교와 오설록 중심으로 편안한 동선을 준비해 볼게요.',
-        fromUser: false,
-        time: '오전 9:26',
-      ),
     ],
     'jason': [
       const GuideMessage(
@@ -56,12 +46,8 @@ class AppState extends ChangeNotifier {
       ),
     ],
   };
-  final Map<String, int> _guideUnreadCounts = {
-    'mina': 1,
-    'jason': 2,
-    'sora': 0,
-    'deokchun': 1,
-  };
+  final Set<String> _activeGuideConversationIds = {};
+  final Map<String, int> _guideUnreadCounts = {};
   final Map<String, GuideBooking> _guideBookings = {};
 
   String language = '한국어';
@@ -92,6 +78,9 @@ class AppState extends ChangeNotifier {
   List<GuideMessage> messagesForGuide(String guideId) =>
       List.unmodifiable(_guideMessages[guideId] ?? const []);
 
+  bool hasGuideConversation(String guideId) =>
+      _activeGuideConversationIds.contains(guideId);
+
   int unreadCountForGuide(String guideId) => _guideUnreadCounts[guideId] ?? 0;
 
   GuideBooking? bookingForGuide(String guideId) => _guideBookings[guideId];
@@ -105,6 +94,7 @@ class AppState extends ChangeNotifier {
   void sendGuideMessage(String guideId, String text) {
     final value = text.trim();
     if (value.isEmpty) return;
+    _activeGuideConversationIds.add(guideId);
     _guideMessages
         .putIfAbsent(guideId, () => [])
         .add(
@@ -181,6 +171,7 @@ class AppState extends ChangeNotifier {
 
   void submitGuideBooking(GuideBooking booking) {
     _selectedGuideId = booking.guideId;
+    _activeGuideConversationIds.add(booking.guideId);
     _guideBookings[booking.guideId] = booking.copyWith(
       status: GuideBookingStatus.pending,
     );

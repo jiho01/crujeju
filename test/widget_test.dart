@@ -790,8 +790,20 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('메시지'), findsOneWidget);
+    expect(find.byKey(const ValueKey('message-empty-state')), findsOneWidget);
+    expect(find.text('아직 대화가 없어요'), findsOneWidget);
+    expect(find.byKey(const ValueKey('message-thread-mina')), findsNothing);
+    expect(find.byKey(const ValueKey('message-thread-jason')), findsNothing);
+    expect(appState.hasGuideConversation('mina'), isFalse);
+
+    appState.sendGuideMessage('mina', '항구에서 바로 만날 수 있나요?');
+    appState.addGuideReply('mina', '네, 입항 시간에 맞춰 기다릴게요.');
+    await tester.pump();
+
+    expect(find.byKey(const ValueKey('message-empty-state')), findsNothing);
     expect(find.byKey(const ValueKey('message-thread-mina')), findsOneWidget);
-    expect(find.byKey(const ValueKey('message-thread-jason')), findsOneWidget);
+    expect(find.byKey(const ValueKey('message-thread-jason')), findsNothing);
+    expect(appState.hasGuideConversation('mina'), isTrue);
 
     await tester.tap(find.byKey(const ValueKey('message-thread-mina')));
     await tester.pumpAndSettle();
@@ -799,11 +811,11 @@ void main() {
 
     await tester.enterText(
       find.byKey(const ValueKey('guide-chat-input')),
-      '항구에서 바로 만날 수 있나요?',
+      '부모님과 함께 이동해도 괜찮을까요?',
     );
     await tester.tap(find.byKey(const ValueKey('guide-chat-send')));
     await tester.pump();
-    expect(find.text('항구에서 바로 만날 수 있나요?'), findsOneWidget);
+    expect(find.text('부모님과 함께 이동해도 괜찮을까요?'), findsOneWidget);
     await tester.pump(const Duration(milliseconds: 600));
     expect(find.textContaining('자세히 준비해서 안내드릴게요'), findsOneWidget);
   });
@@ -830,7 +842,7 @@ void main() {
 
     expect(find.text('미나 리 가이드'), findsOneWidget);
     expect(find.byKey(const ValueKey('guide-chat-input')), findsOneWidget);
-    expect(find.text('새연교와 오설록 중심으로 편안한 동선을 준비해 볼게요.'), findsOneWidget);
+    expect(find.text('안녕하세요. 입항 시간에 맞춰 강정항에서 만날 수 있어요.'), findsOneWidget);
   });
 
   testWidgets('가이드 예약 요청을 채팅에서 수정하고 수락한 뒤 대화를 이어간다', (tester) async {
@@ -850,6 +862,7 @@ void main() {
         total: guide.price,
       ),
     );
+    expect(appState.hasGuideConversation(guide.id), isTrue);
 
     await tester.pumpWidget(
       MaterialApp(

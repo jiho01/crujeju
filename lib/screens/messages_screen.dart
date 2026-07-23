@@ -31,7 +31,8 @@ class _MessagesScreenState extends State<MessagesScreen> {
               final guides =
                   AppData.guides.where((guide) {
                     final messages = widget.appState.messagesForGuide(guide.id);
-                    return messages.isNotEmpty &&
+                    return widget.appState.hasGuideConversation(guide.id) &&
+                        messages.isNotEmpty &&
                         guide.name.toLowerCase().contains(_query.toLowerCase());
                   }).toList()..sort((a, b) {
                     final unreadA = widget.appState.unreadCountForGuide(a.id);
@@ -61,23 +62,28 @@ class _MessagesScreenState extends State<MessagesScreen> {
                     ),
                   ),
                   Expanded(
-                    child: ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
-                      itemCount: guides.length,
-                      separatorBuilder: (_, _) => const Divider(indent: 68),
-                      itemBuilder: (context, index) {
-                        final guide = guides[index];
-                        final messages = widget.appState.messagesForGuide(
-                          guide.id,
-                        );
-                        return _ConversationRow(
-                          guide: guide,
-                          lastMessage: messages.last,
-                          unread: widget.appState.unreadCountForGuide(guide.id),
-                          onTap: () => _openChat(guide),
-                        );
-                      },
-                    ),
+                    child: guides.isEmpty
+                        ? _MessageEmptyState(hasQuery: _query.isNotEmpty)
+                        : ListView.separated(
+                            padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
+                            itemCount: guides.length,
+                            separatorBuilder: (_, _) =>
+                                const Divider(indent: 68),
+                            itemBuilder: (context, index) {
+                              final guide = guides[index];
+                              final messages = widget.appState.messagesForGuide(
+                                guide.id,
+                              );
+                              return _ConversationRow(
+                                guide: guide,
+                                lastMessage: messages.last,
+                                unread: widget.appState.unreadCountForGuide(
+                                  guide.id,
+                                ),
+                                onTap: () => _openChat(guide),
+                              );
+                            },
+                          ),
                   ),
                 ],
               );
@@ -94,6 +100,53 @@ class _MessagesScreenState extends State<MessagesScreen> {
       MaterialPageRoute(
         builder: (_) =>
             GuideChatScreen(guide: guide, appState: widget.appState),
+      ),
+    );
+  }
+}
+
+class _MessageEmptyState extends StatelessWidget {
+  const _MessageEmptyState({required this.hasQuery});
+
+  final bool hasQuery;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      key: const ValueKey('message-empty-state'),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(32, 20, 32, 80),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 58,
+              height: 58,
+              decoration: const BoxDecoration(
+                color: AppColors.brandWeak,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.chat_bubble_outline_rounded,
+                color: AppColors.brand,
+                size: 26,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              hasQuery ? '검색 결과가 없어요' : '아직 대화가 없어요',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              hasQuery ? '다른 가이드 이름으로 검색해 보세요' : '가이드에게 메시지를 보내면 여기에 표시돼요',
+              textAlign: TextAlign.center,
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+            ),
+          ],
+        ),
       ),
     );
   }
