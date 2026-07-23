@@ -87,7 +87,8 @@ void main() {
     );
     final assistantButton = find.byKey(const ValueKey('global-ai-assistant'));
     expect(bookingButton, findsOneWidget);
-    expect(tester.getSize(bookingButton).width, greaterThan(150));
+    expect(tester.getSize(bookingButton).width, greaterThan(250));
+    expect(tester.getTopLeft(bookingButton).dx, closeTo(20, .1));
     expect(
       tester.getTopRight(bookingButton).dx,
       lessThan(tester.getTopLeft(assistantButton).dx),

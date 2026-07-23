@@ -92,32 +92,50 @@ class _MainShellState extends State<MainShell> {
           ),
           floatingActionButton: _index == 2
               ? null
-              : Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (_index == 0 &&
-                        activeBooking != null &&
-                        activeGuide != null) ...[
-                      _BookingQuickAction(
-                        guide: activeGuide,
-                        booking: activeBooking,
-                        onTap: () => _openBookingDetail(activeGuide),
+              : _index == 0 && activeBooking != null && activeGuide != null
+              ? SizedBox(
+                  width:
+                      (MediaQuery.sizeOf(context).width > 600
+                          ? 600
+                          : MediaQuery.sizeOf(context).width) -
+                      40,
+                  height: 56,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _BookingQuickAction(
+                          guide: activeGuide,
+                          booking: activeBooking,
+                          onTap: () => _openBookingDetail(activeGuide),
+                        ),
                       ),
                       const SizedBox(width: 10),
+                      FloatingActionButton(
+                        key: const ValueKey('global-ai-assistant'),
+                        heroTag: 'global-ai-assistant',
+                        onPressed: () => showAiAssistant(context),
+                        elevation: 3,
+                        highlightElevation: 1,
+                        backgroundColor: AppColors.brand,
+                        foregroundColor: Colors.white,
+                        shape: const CircleBorder(),
+                        tooltip: 'AI 여행 도우미',
+                        child: const Icon(Icons.auto_awesome_rounded, size: 24),
+                      ),
                     ],
-                    FloatingActionButton(
-                      key: const ValueKey('global-ai-assistant'),
-                      heroTag: 'global-ai-assistant',
-                      onPressed: () => showAiAssistant(context),
-                      elevation: 3,
-                      highlightElevation: 1,
-                      backgroundColor: AppColors.brand,
-                      foregroundColor: Colors.white,
-                      shape: const CircleBorder(),
-                      tooltip: 'AI 여행 도우미',
-                      child: const Icon(Icons.auto_awesome_rounded, size: 24),
-                    ),
-                  ],
+                  ),
+                )
+              : FloatingActionButton(
+                  key: const ValueKey('global-ai-assistant'),
+                  heroTag: 'global-ai-assistant',
+                  onPressed: () => showAiAssistant(context),
+                  elevation: 3,
+                  highlightElevation: 1,
+                  backgroundColor: AppColors.brand,
+                  foregroundColor: Colors.white,
+                  shape: const CircleBorder(),
+                  tooltip: 'AI 여행 도우미',
+                  child: const Icon(Icons.auto_awesome_rounded, size: 24),
                 ),
           floatingActionButtonLocation: const _AppEndFloatLocation(),
         );
@@ -154,7 +172,6 @@ class _BookingQuickAction extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(18),
         child: SizedBox(
-          width: 184,
           height: 56,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(13, 8, 11, 8),
@@ -220,10 +237,10 @@ class _AppEndFloatLocation extends FloatingActionButtonLocation {
     final scaffoldWidth = scaffoldGeometry.scaffoldSize.width;
     final appWidth = scaffoldWidth > maxAppWidth ? maxAppWidth : scaffoldWidth;
     final appRight = (scaffoldWidth + appWidth) / 2;
-    final x =
-        appRight -
-        horizontalMargin -
-        scaffoldGeometry.floatingActionButtonSize.width;
+    final floatingWidth = scaffoldGeometry.floatingActionButtonSize.width;
+    final x = floatingWidth >= appWidth
+        ? (scaffoldWidth - appWidth) / 2 + horizontalMargin
+        : appRight - horizontalMargin - floatingWidth;
     final y =
         scaffoldGeometry.contentBottom -
         scaffoldGeometry.floatingActionButtonSize.height -
