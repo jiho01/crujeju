@@ -502,6 +502,24 @@ void main() {
     expect(find.text('최근 결제 214건'), findsNothing);
     expect(find.text('제주항 · 제주시'), findsOneWidget);
     expect(find.text('강정항 · 서귀포'), findsOneWidget);
+    final oceanBackground = find.byKey(
+      const ValueKey('explore-map-ocean-background'),
+    );
+    expect(oceanBackground, findsOneWidget);
+    expect(
+      tester.widget<ColoredBox>(oceanBackground).color,
+      const Color(0xFFD7EEF7),
+    );
+    final jejuPort = find.byKey(const ValueKey('map-port-jeju'));
+    final gangjeongPort = find.byKey(const ValueKey('map-port-gangjeong'));
+    expect(
+      tester.getCenter(jejuPort).dy,
+      lessThan(tester.getCenter(gangjeongPort).dy),
+    );
+    expect(
+      tester.getCenter(gangjeongPort).dx,
+      lessThan(tester.getCenter(jejuPort).dx),
+    );
     expect(find.byKey(const ValueKey('map-zoom-in')), findsOneWidget);
     expect(find.byKey(const ValueKey('map-zoom-out')), findsOneWidget);
     expect(find.byIcon(Icons.local_fire_department_rounded), findsWidgets);
@@ -526,6 +544,13 @@ void main() {
       tester.widget<Transform>(fixedTransform).transform.storage[0],
       closeTo(1 / 1.35, .001),
     );
+    await tester.tap(find.byKey(const ValueKey('map-reset-position')));
+    await tester.tap(find.byKey(const ValueKey('map-zoom-out')));
+    await tester.tap(find.byKey(const ValueKey('map-zoom-out')));
+    await tester.pump();
+    expect(oceanBackground, findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('map-reset-position')));
+    await tester.pump();
 
     await tester.tap(marker);
     await tester.pumpAndSettle();
@@ -839,19 +864,40 @@ void main() {
     expect(find.byKey(const ValueKey('guide-booking-reject')), findsOneWidget);
     expect(find.byKey(const ValueKey('guide-booking-itinerary')), findsNothing);
     expect(
-      find.byKey(const ValueKey('guide-booking-selected-place-saeyeongyo')),
-      findsNothing,
+      find.byKey(const ValueKey('guide-booking-saved-place-saeyeongyo')),
+      findsOneWidget,
     );
     expect(
-      find.byKey(const ValueKey('guide-booking-selected-place-oseolrok')),
+      find.byKey(const ValueKey('guide-booking-saved-place-oseolrok')),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<Text>(find.byKey(const ValueKey('guide-booking-date')))
+          .data,
+      appState.cruise.date,
+    );
+    expect(find.text('저장한 장소'), findsOneWidget);
+    expect(find.text('가이드 계획 일정'), findsNothing);
+    expect(find.text('선택 장소 반영'), findsNothing);
+    expect(find.byKey(const ValueKey('guide-booking-route')), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('guide-booking-toggle')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('guide-booking-expanded-content')),
       findsNothing,
     );
-    expect(find.text('가이드 계획 일정'), findsOneWidget);
-    expect(find.text('선택 장소 반영'), findsNothing);
-    final route = tester.widget<Text>(
-      find.byKey(const ValueKey('guide-booking-route')),
+    expect(find.byKey(const ValueKey('guide-booking-accept')), findsNothing);
+    expect(find.byKey(const ValueKey('guide-booking-date')), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('guide-booking-toggle')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('guide-booking-expanded-content')),
+      findsOneWidget,
     );
-    expect(route.data, '강정항 → 새연교 → 제주 로컬 식당 → 오설록 티뮤지엄 → 강정항');
+    expect(find.byKey(const ValueKey('guide-booking-accept')), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('guide-booking-modify')));
     await tester.pumpAndSettle();

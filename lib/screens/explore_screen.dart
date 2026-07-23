@@ -7,6 +7,8 @@ import '../theme/app_theme.dart';
 import '../widgets/ai_assistant_sheet.dart';
 import '../widgets/common.dart';
 
+const _mapOceanColor = Color(0xFFD7EEF7);
+
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({required this.appState, super.key});
 
@@ -1032,60 +1034,81 @@ class _MapViewState extends State<_MapView> {
       builder: (context, constraints) => Stack(
         children: [
           Positioned.fill(
-            child: InteractiveViewer(
-              transformationController: _mapController,
-              minScale: .8,
-              maxScale: 3,
-              boundaryMargin: const EdgeInsets.all(180),
-              panEnabled: true,
-              scaleEnabled: true,
-              child: SizedBox(
-                width: constraints.maxWidth,
-                height: constraints.maxHeight,
-                child: Stack(
-                  children: [
-                    Positioned.fill(child: CustomPaint(painter: _MapPainter())),
-                    Align(
-                      alignment: const Alignment(-0.08, -0.18),
-                      child: _FixedMapMarkerScale(
-                        scale: _mapScale,
-                        child: const _CruisePortMarker(
-                          label: '제주항',
-                          city: '제주시',
-                        ),
+            child: ColoredBox(
+              key: const ValueKey('explore-map-ocean-background'),
+              color: _mapOceanColor,
+              child: InteractiveViewer(
+                transformationController: _mapController,
+                minScale: .8,
+                maxScale: 3,
+                boundaryMargin: const EdgeInsets.all(180),
+                panEnabled: true,
+                scaleEnabled: true,
+                child: SizedBox(
+                  width: constraints.maxWidth,
+                  height: constraints.maxHeight,
+                  child: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: CustomPaint(painter: _MapPainter()),
                       ),
-                    ),
-                    Align(
-                      alignment: const Alignment(-0.30, 0.08),
-                      child: _FixedMapMarkerScale(
-                        scale: _mapScale,
-                        child: const _CruisePortMarker(
-                          label: '강정항',
-                          city: '서귀포',
-                        ),
-                      ),
-                    ),
-                    for (var i = 0; i < widget.places.length; i++)
-                      Align(
-                        alignment:
-                            _MapView._positions[i % _MapView._positions.length],
-                        child: _FixedMapMarkerScale(
-                          key: ValueKey(
-                            'fixed-map-marker-${widget.places[i].id}',
-                          ),
-                          transformKey: ValueKey(
-                            'fixed-map-marker-transform-${widget.places[i].id}',
-                          ),
-                          scale: _mapScale,
-                          child: _MapPhotoMarker(
-                            place: widget.places[i],
-                            selected:
-                                widget.places[i].id == widget.selectedPlace?.id,
-                            onTap: () => widget.onSelected(widget.places[i]),
+                      Positioned(
+                        left: constraints.maxWidth * .50,
+                        top:
+                            constraints.maxHeight * .46 -
+                            constraints.maxWidth * .185,
+                        child: FractionalTranslation(
+                          translation: const Offset(-.5, -.5),
+                          child: _FixedMapMarkerScale(
+                            scale: _mapScale,
+                            child: const _CruisePortMarker(
+                              key: ValueKey('map-port-jeju'),
+                              label: '제주항',
+                              city: '제주시',
+                            ),
                           ),
                         ),
                       ),
-                  ],
+                      Positioned(
+                        left: constraints.maxWidth * .39,
+                        top:
+                            constraints.maxHeight * .46 +
+                            constraints.maxWidth * .19,
+                        child: FractionalTranslation(
+                          translation: const Offset(-.5, -.5),
+                          child: _FixedMapMarkerScale(
+                            scale: _mapScale,
+                            child: const _CruisePortMarker(
+                              key: ValueKey('map-port-gangjeong'),
+                              label: '강정항',
+                              city: '서귀포',
+                            ),
+                          ),
+                        ),
+                      ),
+                      for (var i = 0; i < widget.places.length; i++)
+                        Align(
+                          alignment: _MapView
+                              ._positions[i % _MapView._positions.length],
+                          child: _FixedMapMarkerScale(
+                            key: ValueKey(
+                              'fixed-map-marker-${widget.places[i].id}',
+                            ),
+                            transformKey: ValueKey(
+                              'fixed-map-marker-transform-${widget.places[i].id}',
+                            ),
+                            scale: _mapScale,
+                            child: _MapPhotoMarker(
+                              place: widget.places[i],
+                              selected:
+                                  widget.places[i].id ==
+                                  widget.selectedPlace?.id,
+                              onTap: () => widget.onSelected(widget.places[i]),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -1149,7 +1172,7 @@ class _FixedMapMarkerScale extends StatelessWidget {
 }
 
 class _CruisePortMarker extends StatelessWidget {
-  const _CruisePortMarker({required this.label, required this.city});
+  const _CruisePortMarker({required this.label, required this.city, super.key});
 
   final String label;
   final String city;
@@ -1414,7 +1437,7 @@ class _MapPainter extends CustomPainter {
     final bounds = Offset.zero & size;
     double mapY(double y) => size.height * .46 + (y - .49) * size.width;
 
-    canvas.drawRect(bounds, Paint()..color = const Color(0xFFD7EEF7));
+    canvas.drawRect(bounds, Paint()..color = _mapOceanColor);
 
     void drawLabel(
       String text,

@@ -47,6 +47,7 @@ class _GuideChatPanelState extends State<GuideChatPanel> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _replying = false;
+  bool _bookingRequestExpanded = true;
 
   @override
   void initState() {
@@ -84,8 +85,12 @@ class _GuideChatPanelState extends State<GuideChatPanel> {
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 2),
                     child: _GuideBookingRequestCard(
                       booking: booking,
-                      guide: widget.guide,
                       appState: widget.appState,
+                      expanded: _bookingRequestExpanded,
+                      onToggle: () => setState(
+                        () =>
+                            _bookingRequestExpanded = !_bookingRequestExpanded,
+                      ),
                       onAccept: () =>
                           widget.appState.acceptGuideBooking(widget.guide.id),
                       onReject: () =>
@@ -390,16 +395,18 @@ class _GuideChatPanelState extends State<GuideChatPanel> {
 class _GuideBookingRequestCard extends StatelessWidget {
   const _GuideBookingRequestCard({
     required this.booking,
-    required this.guide,
     required this.appState,
+    required this.expanded,
+    required this.onToggle,
     required this.onAccept,
     required this.onReject,
     required this.onModify,
   });
 
   final GuideBooking booking;
-  final Guide guide;
   final AppState appState;
+  final bool expanded;
+  final VoidCallback onToggle;
   final VoidCallback onAccept;
   final VoidCallback onReject;
   final VoidCallback onModify;
@@ -436,17 +443,6 @@ class _GuideBookingRequestCard extends StatelessWidget {
         booking.status == GuideBookingStatus.pending ||
         booking.status == GuideBookingStatus.modified;
     final selectedPlaces = selectedGuidePlaces(appState.savedPlaceIds);
-    final itinerary = buildGuideItinerary(
-      booking: booking,
-      guide: guide,
-      cruise: appState.cruise,
-      selectedPlaces: selectedPlaces,
-    );
-    final route = [
-      appState.cruise.port,
-      ...itinerary.skip(1).take(itinerary.length - 2).map((stop) => stop.title),
-      appState.cruise.port,
-    ].join(' → ');
     return Container(
       key: const ValueKey('guide-booking-request-card'),
       padding: const EdgeInsets.all(15),
@@ -465,131 +461,251 @@ class _GuideBookingRequestCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: statusBackground,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.calendar_month_rounded,
-                  color: statusColor,
-                  size: 18,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '가이드 일정 요청',
-                      style: Theme.of(context).textTheme.titleSmall,
+          Semantics(
+            button: true,
+            expanded: expanded,
+            child: GestureDetector(
+              key: const ValueKey('guide-booking-toggle'),
+              behavior: HitTestBehavior.opaque,
+              onTap: onToggle,
+              child: Row(
+                children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: statusBackground,
+                      shape: BoxShape.circle,
                     ),
-                    Text(
-                      statusLabel,
-                      key: const ValueKey('guide-booking-status'),
-                      style: Theme.of(
-                        context,
-                      ).textTheme.labelSmall?.copyWith(color: statusColor),
+                    child: Icon(
+                      Icons.calendar_month_rounded,
+                      color: statusColor,
+                      size: 18,
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '가이드 일정 요청',
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            Text(
+                              appState.cruise.date,
+                              key: const ValueKey('guide-booking-date'),
+                              style: Theme.of(context).textTheme.labelSmall
+                                  ?.copyWith(color: AppColors.textSecondary),
+                            ),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 5),
+                              child: Text(
+                                '·',
+                                style: TextStyle(color: AppColors.textTertiary),
+                              ),
+                            ),
+                            Flexible(
+                              child: Text(
+                                statusLabel,
+                                key: const ValueKey('guide-booking-status'),
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.labelSmall
+                                    ?.copyWith(color: statusColor),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    formatWon(booking.total),
+                    key: const ValueKey('guide-booking-chat-total'),
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: AppColors.brandNavy,
+                    ),
+                  ),
+                  const SizedBox(width: 5),
+                  AnimatedRotation(
+                    turns: expanded ? .5 : 0,
+                    duration: const Duration(milliseconds: 180),
+                    child: const Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      key: ValueKey('guide-booking-toggle-icon'),
+                      color: AppColors.textTertiary,
+                    ),
+                  ),
+                ],
               ),
-              Text(
-                formatWon(booking.total),
-                key: const ValueKey('guide-booking-chat-total'),
-                style: Theme.of(
-                  context,
-                ).textTheme.titleSmall?.copyWith(color: AppColors.brandNavy),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceSecondary,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${booking.startTime}–${booking.endTime} · '
-                  '${_bookingDurationLabel(booking.durationMinutes)}\n'
-                  '${booking.transport} · ${booking.language}',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.textSecondary,
-                    height: 1.45,
-                  ),
-                ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8),
-                  child: Divider(),
-                ),
-                Text(
-                  '가이드 계획 일정',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.textSecondary,
-                    height: 1.45,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  route,
-                  key: const ValueKey('guide-booking-route'),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.textSecondary,
-                    height: 1.45,
-                  ),
-                ),
-              ],
             ),
           ),
-          if (actionable) ...[
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    key: const ValueKey('guide-booking-reject'),
-                    onPressed: onReject,
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.danger,
-                    ),
-                    child: const Text('거절'),
-                  ),
-                ),
-                const SizedBox(width: 7),
-                Expanded(
-                  child: OutlinedButton(
-                    key: const ValueKey('guide-booking-modify'),
-                    onPressed: onModify,
-                    child: Text(
-                      booking.status == GuideBookingStatus.modified
-                          ? '다시 수정'
-                          : '수정',
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 7),
-                Expanded(
-                  child: FilledButton(
-                    key: const ValueKey('guide-booking-accept'),
-                    onPressed: onAccept,
-                    child: const Text('수락'),
-                  ),
-                ),
-              ],
-            ),
-          ],
+          AnimatedSize(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOut,
+            child: expanded
+                ? Column(
+                    key: const ValueKey('guide-booking-expanded-content'),
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 12),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 11,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceSecondary,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _BookingRequestInfoRow(
+                              icon: Icons.schedule_rounded,
+                              text:
+                                  '${booking.startTime}–${booking.endTime} · '
+                                  '${_bookingDurationLabel(booking.durationMinutes)}',
+                            ),
+                            const SizedBox(height: 7),
+                            _BookingRequestInfoRow(
+                              icon: Icons.tune_rounded,
+                              text:
+                                  '${booking.transport} · ${booking.language}',
+                            ),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 10),
+                              child: Divider(),
+                            ),
+                            Text(
+                              '저장한 장소',
+                              style: Theme.of(context).textTheme.labelMedium
+                                  ?.copyWith(color: AppColors.textSecondary),
+                            ),
+                            const SizedBox(height: 7),
+                            if (selectedPlaces.isEmpty)
+                              Text(
+                                '아직 저장한 장소가 없어요',
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(color: AppColors.textTertiary),
+                              )
+                            else
+                              Wrap(
+                                spacing: 6,
+                                runSpacing: 6,
+                                children: [
+                                  for (final place in selectedPlaces)
+                                    Container(
+                                      key: ValueKey(
+                                        'guide-booking-saved-place-${place.id}',
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 9,
+                                        vertical: 7,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(9),
+                                        border: Border.all(
+                                          color: AppColors.line,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(
+                                            Icons.place_rounded,
+                                            size: 14,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            place.name,
+                                            style: Theme.of(
+                                              context,
+                                            ).textTheme.bodySmall,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                ],
+                              ),
+                          ],
+                        ),
+                      ),
+                      if (actionable) ...[
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                key: const ValueKey('guide-booking-reject'),
+                                onPressed: onReject,
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppColors.danger,
+                                ),
+                                child: const Text('거절'),
+                              ),
+                            ),
+                            const SizedBox(width: 7),
+                            Expanded(
+                              child: OutlinedButton(
+                                key: const ValueKey('guide-booking-modify'),
+                                onPressed: onModify,
+                                child: Text(
+                                  booking.status == GuideBookingStatus.modified
+                                      ? '다시 수정'
+                                      : '수정',
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 7),
+                            Expanded(
+                              child: FilledButton(
+                                key: const ValueKey('guide-booking-accept'),
+                                onPressed: onAccept,
+                                child: const Text('수락'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  )
+                : const SizedBox.shrink(),
+          ),
         ],
       ),
+    );
+  }
+}
+
+class _BookingRequestInfoRow extends StatelessWidget {
+  const _BookingRequestInfoRow({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: AppColors.textTertiary),
+        const SizedBox(width: 7),
+        Expanded(
+          child: Text(
+            text,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: AppColors.textSecondary,
+              height: 1.35,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
