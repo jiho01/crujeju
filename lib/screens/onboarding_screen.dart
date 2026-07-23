@@ -364,6 +364,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           sliver: SliverToBoxAdapter(
             child: TextField(
               key: const ValueKey('onboarding-cruise-search'),
+              enabled: false,
               controller: _searchController,
               focusNode: _cruiseSearchFocusNode,
               onChanged: (value) => setState(() => _query = value),

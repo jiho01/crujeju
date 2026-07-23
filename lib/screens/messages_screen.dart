@@ -92,6 +92,7 @@ class _MessagesScreenState extends State<MessagesScreen>
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
                     child: TextField(
                       key: const ValueKey('message-search'),
+                      enabled: false,
                       focusNode: _searchFocusNode,
                       onChanged: (value) => setState(() => _query = value),
                       onSubmitted: (_) => _searchFocusNode.unfocus(),

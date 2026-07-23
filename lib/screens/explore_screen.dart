@@ -114,6 +114,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                       borderRadius: BorderRadius.circular(18),
                       child: TextField(
                         key: const ValueKey('explore-map-search'),
+                        enabled: false,
                         controller: _searchController,
                         focusNode: _searchFocusNode,
                         onChanged: _updateQuery,

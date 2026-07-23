@@ -203,10 +203,9 @@ void main() {
     expect(find.text('곧, 제주에서 만나요'), findsOneWidget);
   });
 
-  testWidgets('선박 검색 키보드를 닫으면 이전 화면 위치로 돌아온다', (tester) async {
+  testWidgets('선박 검색창은 눌러도 키보드가 열리지 않는다', (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    addTearDown(tester.view.resetViewInsets);
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.light,
@@ -219,18 +218,11 @@ void main() {
     await tester.pumpAndSettle();
 
     final search = find.byKey(const ValueKey('onboarding-cruise-search'));
-    final initialSearchTop = tester.getTopLeft(search).dy;
+    expect(tester.widget<TextField>(search).enabled, isFalse);
 
     await tester.tap(search);
     await tester.pump();
-    tester.view.viewInsets = const FakeViewPadding(bottom: 360);
-    await tester.pumpAndSettle();
-    expect(tester.getTopLeft(search).dy, closeTo(initialSearchTop, 1));
 
-    tester.view.viewInsets = FakeViewPadding.zero;
-    await tester.pumpAndSettle();
-
-    expect(tester.getTopLeft(search).dy, closeTo(initialSearchTop, 1));
     expect(tester.widget<TextField>(search).focusNode?.hasFocus, isFalse);
   });
 
@@ -381,10 +373,9 @@ void main() {
     expect(find.text('언어 · 2개'), findsOneWidget);
   });
 
-  testWidgets('가이드 검색 키보드를 닫으면 목록 위치가 원래대로 돌아온다', (tester) async {
+  testWidgets('가이드 검색창은 눌러도 키보드가 열리지 않는다', (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    addTearDown(tester.view.resetViewInsets);
     final appState = AppState();
     addTearDown(appState.dispose);
     await tester.pumpWidget(
@@ -399,30 +390,11 @@ void main() {
     await tester.pumpAndSettle();
 
     final search = find.byKey(const ValueKey('guide-search'));
-    final results = find.byKey(const PageStorageKey('guides-scroll'));
-    final initialSearchTop = tester.getTopLeft(search).dy;
-    final scrollable = find.descendant(
-      of: results,
-      matching: find.byType(Scrollable),
-    );
-    final position = tester.state<ScrollableState>(scrollable).position;
-    final initialOffset = position.pixels;
+    expect(tester.widget<TextField>(search).enabled, isFalse);
 
     await tester.tap(search);
     await tester.pump();
-    tester.view.viewInsets = const FakeViewPadding(bottom: 360);
-    await tester.pumpAndSettle();
-    expect(tester.getTopLeft(search).dy, closeTo(initialSearchTop, 1));
 
-    await tester.drag(results, const Offset(0, -220));
-    await tester.pumpAndSettle();
-    expect(position.pixels, greaterThan(initialOffset + 20));
-
-    tester.view.viewInsets = FakeViewPadding.zero;
-    await tester.pumpAndSettle();
-
-    expect(tester.getTopLeft(search).dy, closeTo(initialSearchTop, 1));
-    expect(position.pixels, closeTo(initialOffset, 1));
     expect(tester.widget<TextField>(search).focusNode?.hasFocus, isFalse);
   });
 
@@ -441,10 +413,10 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('bottom-tab-1')));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byKey(const ValueKey('guide-search')), '김덕춘');
-    await tester.pumpAndSettle();
 
     final guideCard = find.byKey(const ValueKey('guide-card-deokchun'));
+    await tester.ensureVisible(guideCard);
+    await tester.pumpAndSettle();
     expect(guideCard, findsOneWidget);
     expect(find.text('베테랑 로컬 가이드'), findsOneWidget);
     expect(find.text('오름 트레킹'), findsOneWidget);
@@ -670,10 +642,9 @@ void main() {
     expect(sheetTop, lessThanOrEqualTo(tagBottom + 14));
   });
 
-  testWidgets('지도 검색 키보드를 닫으면 하단 목록 위치를 복원한다', (tester) async {
+  testWidgets('지도 검색창은 눌러도 키보드가 열리지 않는다', (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    addTearDown(tester.view.resetViewInsets);
     final appState = AppState();
     addTearDown(appState.dispose);
     await tester.pumpWidget(
@@ -688,23 +659,11 @@ void main() {
     await tester.pumpAndSettle();
 
     final search = find.byKey(const ValueKey('explore-map-search'));
-    final list = find.byKey(const ValueKey('explore-place-list-scroll'));
-    final initialSearchTop = tester.getTopLeft(search).dy;
-    final initialSheetTop = tester.getTopLeft(list).dy;
+    expect(tester.widget<TextField>(search).enabled, isFalse);
 
     await tester.tap(search);
     await tester.pump();
-    tester.view.viewInsets = const FakeViewPadding(bottom: 360);
-    await tester.pumpAndSettle();
-    await tester.drag(list, const Offset(0, -260));
-    await tester.pumpAndSettle();
-    expect(tester.getTopLeft(list).dy, lessThan(initialSheetTop - 20));
 
-    tester.view.viewInsets = FakeViewPadding.zero;
-    await tester.pumpAndSettle();
-
-    expect(tester.getTopLeft(search).dy, closeTo(initialSearchTop, 1));
-    expect(tester.getTopLeft(list).dy, closeTo(initialSheetTop, 1));
     expect(tester.widget<TextField>(search).focusNode?.hasFocus, isFalse);
   });
 
@@ -830,7 +789,6 @@ void main() {
   testWidgets('가이드 탭 메시지 목록에서 대화를 열고 메시지를 보낸다', (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    addTearDown(tester.view.resetViewInsets);
     final appState = AppState();
     addTearDown(appState.dispose);
     await tester.pumpWidget(
@@ -854,14 +812,9 @@ void main() {
     expect(appState.hasGuideConversation('mina'), isFalse);
 
     final messageSearch = find.byKey(const ValueKey('message-search'));
-    final initialSearchTop = tester.getTopLeft(messageSearch).dy;
+    expect(tester.widget<TextField>(messageSearch).enabled, isFalse);
     await tester.tap(messageSearch);
     await tester.pump();
-    tester.view.viewInsets = const FakeViewPadding(bottom: 360);
-    await tester.pumpAndSettle();
-    tester.view.viewInsets = FakeViewPadding.zero;
-    await tester.pumpAndSettle();
-    expect(tester.getTopLeft(messageSearch).dy, closeTo(initialSearchTop, 1));
     expect(
       tester.widget<TextField>(messageSearch).focusNode?.hasFocus,
       isFalse,

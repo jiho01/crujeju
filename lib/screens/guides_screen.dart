@@ -124,6 +124,7 @@ class _GuidesScreenState extends State<GuidesScreen>
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: TextField(
               key: const ValueKey('guide-search'),
+              enabled: false,
               controller: _searchController,
               focusNode: _searchFocusNode,
               onChanged: (value) => setState(() => _query = value),
