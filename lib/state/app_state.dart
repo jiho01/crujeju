@@ -54,6 +54,7 @@ class AppState extends ChangeNotifier {
     'jason': 2,
     'sora': 0,
   };
+  final Map<String, GuideBooking> _guideBookings = {};
 
   String language = '한국어';
   String currency = 'KRW';
@@ -77,6 +78,8 @@ class AppState extends ChangeNotifier {
       List.unmodifiable(_guideMessages[guideId] ?? const []);
 
   int unreadCountForGuide(String guideId) => _guideUnreadCounts[guideId] ?? 0;
+
+  GuideBooking? bookingForGuide(String guideId) => _guideBookings[guideId];
 
   void markGuideConversationRead(String guideId) {
     if ((_guideUnreadCounts[guideId] ?? 0) == 0) return;
@@ -161,6 +164,83 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void submitGuideBooking(GuideBooking booking) {
+    _selectedGuideId = booking.guideId;
+    _guideBookings[booking.guideId] = booking.copyWith(
+      status: GuideBookingStatus.pending,
+    );
+    _guideMessages.putIfAbsent(booking.guideId, () => []).addAll([
+      GuideMessage(
+        text:
+            '가이드 일정 요청을 보냈어요.\n'
+            '${booking.startTime}–${booking.endTime} · '
+            '${_durationLabel(booking.durationMinutes)} · ${booking.language}\n'
+            '${booking.transport} · ${_wonLabel(booking.total)}',
+        fromUser: true,
+        time: _currentClockLabel(),
+      ),
+      GuideMessage(
+        text: '예약 요청이 도착했어요. 가이드가 일정을 확인하고 있어요.',
+        fromUser: false,
+        time: _currentClockLabel(),
+      ),
+    ]);
+    _guideUnreadCounts[booking.guideId] = 1;
+    notifyListeners();
+  }
+
+  void acceptGuideBooking(String guideId) {
+    final booking = _guideBookings[guideId];
+    if (booking == null) return;
+    _guideBookings[guideId] = booking.copyWith(
+      status: GuideBookingStatus.accepted,
+    );
+    _appendGuideBookingReply(
+      guideId,
+      '일정 요청을 수락했어요. '
+      '${booking.startTime}에 약속한 장소에서 만나요.',
+    );
+  }
+
+  void rejectGuideBooking(String guideId) {
+    final booking = _guideBookings[guideId];
+    if (booking == null) return;
+    if (_selectedGuideId == guideId) {
+      _selectedGuideId = null;
+    }
+    _guideBookings[guideId] = booking.copyWith(
+      status: GuideBookingStatus.rejected,
+    );
+    _appendGuideBookingReply(
+      guideId,
+      '이번 일정은 진행하기 어려워 요청을 거절했어요. '
+      '채팅으로 다른 시간을 조율해 주세요.',
+    );
+  }
+
+  void modifyGuideBooking(String guideId, GuideBooking updated) {
+    if (!_guideBookings.containsKey(guideId)) return;
+    final booking = updated.copyWith(status: GuideBookingStatus.modified);
+    _guideBookings[guideId] = booking;
+    _appendGuideBookingReply(
+      guideId,
+      '투어 옵션을 수정해 제안했어요.\n'
+      '${booking.startTime}–${booking.endTime} · '
+      '${_durationLabel(booking.durationMinutes)} · ${booking.language}\n'
+      '${booking.transport} · ${_wonLabel(booking.total)}',
+    );
+  }
+
+  void _appendGuideBookingReply(String guideId, String text) {
+    _guideMessages
+        .putIfAbsent(guideId, () => [])
+        .add(
+          GuideMessage(text: text, fromUser: false, time: _currentClockLabel()),
+        );
+    _guideUnreadCounts[guideId] = 0;
+    notifyListeners();
+  }
+
   void toggleCardLock() {
     _cardLocked = !_cardLocked;
     notifyListeners();
@@ -209,4 +289,22 @@ String _currentClockLabel() {
   final period = now.hour < 12 ? '오전' : '오후';
   final hour = now.hour % 12 == 0 ? 12 : now.hour % 12;
   return '$period $hour:${now.minute.toString().padLeft(2, '0')}';
+}
+
+String _durationLabel(int durationMinutes) {
+  final hours = durationMinutes ~/ 60;
+  final minutes = durationMinutes % 60;
+  return minutes == 0 ? '$hours시간' : '$hours시간 $minutes분';
+}
+
+String _wonLabel(int amount) {
+  final digits = amount.toString();
+  final buffer = StringBuffer();
+  for (var index = 0; index < digits.length; index++) {
+    if (index > 0 && (digits.length - index) % 3 == 0) {
+      buffer.write(',');
+    }
+    buffer.write(digits[index]);
+  }
+  return '$buffer원';
 }

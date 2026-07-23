@@ -104,6 +104,51 @@ class GuideMessage {
   final String time;
 }
 
+enum GuideBookingStatus { pending, accepted, rejected, modified }
+
+class GuideBooking {
+  const GuideBooking({
+    required this.guideId,
+    required this.transport,
+    required this.language,
+    required this.startTime,
+    required this.endTime,
+    required this.durationMinutes,
+    required this.total,
+    this.status = GuideBookingStatus.pending,
+  });
+
+  final String guideId;
+  final String transport;
+  final String language;
+  final String startTime;
+  final String endTime;
+  final int durationMinutes;
+  final int total;
+  final GuideBookingStatus status;
+
+  GuideBooking copyWith({
+    String? transport,
+    String? language,
+    String? startTime,
+    String? endTime,
+    int? durationMinutes,
+    int? total,
+    GuideBookingStatus? status,
+  }) {
+    return GuideBooking(
+      guideId: guideId,
+      transport: transport ?? this.transport,
+      language: language ?? this.language,
+      startTime: startTime ?? this.startTime,
+      endTime: endTime ?? this.endTime,
+      durationMinutes: durationMinutes ?? this.durationMinutes,
+      total: total ?? this.total,
+      status: status ?? this.status,
+    );
+  }
+}
+
 class Place {
   const Place({
     required this.id,

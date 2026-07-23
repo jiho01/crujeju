@@ -604,7 +604,17 @@ class _GuideDetailScreenState extends State<GuideDetailScreen> {
     );
     if (selection == null || !mounted) return;
 
-    widget.appState.chooseGuide(widget.guide.id);
+    widget.appState.submitGuideBooking(
+      GuideBooking(
+        guideId: widget.guide.id,
+        transport: selection.transport,
+        language: selection.language,
+        startTime: selection.startTime,
+        endTime: selection.endTime,
+        durationMinutes: selection.durationMinutes,
+        total: selection.total,
+      ),
+    );
     setState(() {});
     if (!context.mounted) return;
     await _showBookingComplete(context, selection);

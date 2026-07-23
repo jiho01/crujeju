@@ -3,10 +3,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:crujeju/app.dart';
+import 'package:crujeju/data/app_data.dart';
+import 'package:crujeju/models/models.dart';
 import 'package:crujeju/screens/main_shell.dart';
 import 'package:crujeju/state/app_state.dart';
 import 'package:crujeju/theme/app_theme.dart';
 import 'package:crujeju/widgets/common.dart';
+import 'package:crujeju/widgets/guide_chat.dart';
 
 void main() {
   testWidgets('홈에서 핵심 여행 정보를 보여준다', (tester) async {
@@ -535,6 +538,103 @@ void main() {
     expect(find.text('새연교와 오설록 중심으로 편안한 동선을 준비해 볼게요.'), findsOneWidget);
   });
 
+  testWidgets('가이드 예약 요청을 채팅에서 수정하고 수락한 뒤 대화를 이어간다', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final appState = AppState();
+    addTearDown(appState.dispose);
+    final guide = AppData.guides.first;
+    appState.submitGuideBooking(
+      GuideBooking(
+        guideId: guide.id,
+        transport: '가이드 승용차',
+        language: '한국어',
+        startTime: '10:00',
+        endTime: '16:00',
+        durationMinutes: 360,
+        total: guide.price,
+      ),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: GuideChatPanel(guide: guide, appState: appState),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('guide-booking-request-card')),
+      findsOneWidget,
+    );
+    expect(find.text('가이드 확인 대기'), findsOneWidget);
+    expect(find.textContaining('가이드 일정 요청을 보냈어요.'), findsOneWidget);
+    expect(find.byKey(const ValueKey('guide-booking-accept')), findsOneWidget);
+    expect(find.byKey(const ValueKey('guide-booking-reject')), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('guide-booking-modify')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('chat-booking-modify-sheet')),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey('chat-booking-transport-프리미엄 밴')),
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('chat-booking-language-English')),
+    );
+    final timeRange = find.byKey(const ValueKey('chat-booking-time-range'));
+    await tester.ensureVisible(timeRange);
+    tester.widget<RangeSlider>(timeRange).onChanged!(const RangeValues(10, 17));
+    await tester.pump();
+    expect(find.text('245,000원'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('chat-booking-modify-submit')));
+    await tester.pumpAndSettle();
+    final modifiedBooking = appState.bookingForGuide(guide.id);
+    expect(modifiedBooking?.status, GuideBookingStatus.modified);
+    expect(modifiedBooking?.language, 'English');
+    expect(modifiedBooking?.transport, '프리미엄 밴');
+    expect(modifiedBooking?.total, 245000);
+    expect(find.text('수정 제안'), findsOneWidget);
+    expect(find.textContaining('투어 옵션을 수정해 제안했어요.'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('guide-booking-accept')));
+    await tester.pump();
+    expect(
+      appState.bookingForGuide(guide.id)?.status,
+      GuideBookingStatus.accepted,
+    );
+    expect(find.text('예약 수락'), findsOneWidget);
+    expect(find.textContaining('일정 요청을 수락했어요.'), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('guide-chat-input')),
+      '수정된 일정으로 진행할게요.',
+    );
+    await tester.tap(find.byKey(const ValueKey('guide-chat-send')));
+    await tester.pump();
+    expect(
+      appState
+          .messagesForGuide(guide.id)
+          .any((message) => message.text == '수정된 일정으로 진행할게요.'),
+      isTrue,
+    );
+    expect(
+      appState
+          .messagesForGuide(guide.id)
+          .any((message) => message.text.contains('가이드 일정 요청을 보냈어요.')),
+      isTrue,
+    );
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pumpAndSettle();
+  });
+
   testWidgets('가이드 예약 옵션에 따라 예상 가격이 실시간으로 바뀐다', (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -575,6 +675,10 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('guide-booking-submit')));
     await tester.pumpAndSettle();
     expect(appState.selectedGuideId, 'mina');
+    expect(
+      appState.bookingForGuide('mina')?.status,
+      GuideBookingStatus.pending,
+    );
     expect(find.textContaining('프리미엄 밴 · English'), findsOneWidget);
     expect(find.textContaining('10:00–17:00 · 7시간'), findsOneWidget);
 

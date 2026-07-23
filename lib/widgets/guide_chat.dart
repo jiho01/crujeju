@@ -68,6 +68,7 @@ class _GuideChatPanelState extends State<GuideChatPanel> {
       animation: widget.appState,
       builder: (context, _) {
         final messages = widget.appState.messagesForGuide(widget.guide.id);
+        final booking = widget.appState.bookingForGuide(widget.guide.id);
         WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
         return ColoredBox(
           color: AppColors.surface,
@@ -77,6 +78,18 @@ class _GuideChatPanelState extends State<GuideChatPanel> {
               children: [
                 _ChatHeader(guide: widget.guide, onClose: widget.onClose),
                 const Divider(),
+                if (booking != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 2),
+                    child: _GuideBookingRequestCard(
+                      booking: booking,
+                      onAccept: () =>
+                          widget.appState.acceptGuideBooking(widget.guide.id),
+                      onReject: () =>
+                          widget.appState.rejectGuideBooking(widget.guide.id),
+                      onModify: () => _showModifyBooking(booking),
+                    ),
+                  ),
                 Expanded(
                   child: ListView.builder(
                     key: const ValueKey('guide-chat-messages'),
@@ -101,6 +114,251 @@ class _GuideChatPanelState extends State<GuideChatPanel> {
     );
   }
 
+  Future<void> _showModifyBooking(GuideBooking booking) async {
+    const transportOptions = [
+      ('가이드 승용차', 0),
+      ('프리미엄 밴', 70000),
+      ('택시 동행', -30000),
+    ];
+    var selectedTransport = transportOptions.firstWhere(
+      (option) => option.$1 == booking.transport,
+      orElse: () => transportOptions.first,
+    );
+    var selectedLanguage = booking.language;
+    var selectedTimeRange = RangeValues(
+      _bookingTimeValue(booking.startTime),
+      _bookingTimeValue(booking.endTime),
+    );
+
+    final updated = await showModalBottomSheet<GuideBooking>(
+      context: context,
+      useSafeArea: true,
+      isScrollControlled: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          final durationMinutes =
+              ((selectedTimeRange.end - selectedTimeRange.start) * 60).round();
+          final durationPriceDelta = ((durationMinutes - 360) ~/ 30) * 12500;
+          final total =
+              widget.guide.price + selectedTransport.$2 + durationPriceDelta;
+          final startTime = _formatBookingTime(selectedTimeRange.start);
+          final endTime = _formatBookingTime(selectedTimeRange.end);
+          return FractionallySizedBox(
+            key: const ValueKey('chat-booking-modify-sheet'),
+            heightFactor: .82,
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 2, 12, 10),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '예약 옵션 수정',
+                              style: Theme.of(context).textTheme.headlineSmall,
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              '변경한 시간과 이동수단에 맞춰 금액을 다시 계산해요.',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(sheetContext),
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(),
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '사용 언어',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: widget.guide.languages.map((language) {
+                            return ChoiceChip(
+                              key: ValueKey('chat-booking-language-$language'),
+                              label: Text(language),
+                              selected: language == selectedLanguage,
+                              showCheckmark: false,
+                              onSelected: (_) => setSheetState(
+                                () => selectedLanguage = language,
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 24),
+                        Text(
+                          '이동수단',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: transportOptions.map((option) {
+                            return ChoiceChip(
+                              key: ValueKey(
+                                'chat-booking-transport-${option.$1}',
+                              ),
+                              label: Text(option.$1),
+                              selected: option == selectedTransport,
+                              showCheckmark: false,
+                              onSelected: (_) => setSheetState(
+                                () => selectedTransport = option,
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 24),
+                        Row(
+                          children: [
+                            Text(
+                              '투어 시간',
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            const Spacer(),
+                            Text(
+                              '$startTime – $endTime · '
+                              '${_bookingDurationLabel(durationMinutes)}',
+                              key: const ValueKey('chat-booking-time-summary'),
+                              style: Theme.of(context).textTheme.labelMedium
+                                  ?.copyWith(color: AppColors.brand),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.fromLTRB(10, 10, 10, 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.brandWeak,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Column(
+                            children: [
+                              RangeSlider(
+                                key: const ValueKey('chat-booking-time-range'),
+                                values: selectedTimeRange,
+                                min: 9,
+                                max: 18,
+                                divisions: 18,
+                                labels: RangeLabels(startTime, endTime),
+                                onChanged: (value) {
+                                  if (value.end - value.start < 3) return;
+                                  setSheetState(
+                                    () => selectedTimeRange = RangeValues(
+                                      (value.start * 2).round() / 2,
+                                      (value.end * 2).round() / 2,
+                                    ),
+                                  );
+                                },
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                ),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      '09:00',
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.labelSmall,
+                                    ),
+                                    Text(
+                                      '18:00',
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.labelSmall,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        SurfaceCard(
+                          color: AppColors.surfaceSecondary,
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  '변경 예상금액',
+                                  style: Theme.of(context).textTheme.bodyMedium,
+                                ),
+                              ),
+                              Text(
+                                formatWon(total),
+                                key: const ValueKey(
+                                  'chat-booking-modified-total',
+                                ),
+                                style: Theme.of(context).textTheme.titleLarge
+                                    ?.copyWith(color: AppColors.brandNavy),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    border: Border(top: BorderSide(color: AppColors.line)),
+                  ),
+                  child: SafeArea(
+                    top: false,
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        key: const ValueKey('chat-booking-modify-submit'),
+                        onPressed: () => Navigator.pop(
+                          sheetContext,
+                          booking.copyWith(
+                            transport: selectedTransport.$1,
+                            language: selectedLanguage,
+                            startTime: startTime,
+                            endTime: endTime,
+                            durationMinutes: durationMinutes,
+                            total: total,
+                            status: GuideBookingStatus.modified,
+                          ),
+                        ),
+                        child: const Text('수정안 보내기'),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+    if (updated == null || !mounted) return;
+    widget.appState.modifyGuideBooking(widget.guide.id, updated);
+  }
+
   Future<void> _send() async {
     final message = _controller.text.trim();
     if (message.isEmpty || _replying) return;
@@ -122,6 +380,172 @@ class _GuideChatPanelState extends State<GuideChatPanel> {
       _scrollController.position.maxScrollExtent,
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeOut,
+    );
+  }
+}
+
+class _GuideBookingRequestCard extends StatelessWidget {
+  const _GuideBookingRequestCard({
+    required this.booking,
+    required this.onAccept,
+    required this.onReject,
+    required this.onModify,
+  });
+
+  final GuideBooking booking;
+  final VoidCallback onAccept;
+  final VoidCallback onReject;
+  final VoidCallback onModify;
+
+  @override
+  Widget build(BuildContext context) {
+    final (
+      statusLabel,
+      statusColor,
+      statusBackground,
+    ) = switch (booking.status) {
+      GuideBookingStatus.pending => (
+        '가이드 확인 대기',
+        AppColors.warning,
+        AppColors.warningWeak,
+      ),
+      GuideBookingStatus.accepted => (
+        '예약 수락',
+        AppColors.success,
+        AppColors.successWeak,
+      ),
+      GuideBookingStatus.rejected => (
+        '예약 거절',
+        AppColors.danger,
+        AppColors.dangerWeak,
+      ),
+      GuideBookingStatus.modified => (
+        '수정 제안',
+        AppColors.brand,
+        AppColors.brandWeak,
+      ),
+    };
+    final actionable =
+        booking.status == GuideBookingStatus.pending ||
+        booking.status == GuideBookingStatus.modified;
+    return Container(
+      key: const ValueKey('guide-booking-request-card'),
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.line),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0F0F1720),
+            blurRadius: 14,
+            offset: Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: statusBackground,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.calendar_month_rounded,
+                  color: statusColor,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '가이드 일정 요청',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    Text(
+                      statusLabel,
+                      key: const ValueKey('guide-booking-status'),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.labelSmall?.copyWith(color: statusColor),
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                formatWon(booking.total),
+                key: const ValueKey('guide-booking-chat-total'),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall?.copyWith(color: AppColors.brandNavy),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceSecondary,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              '${booking.startTime}–${booking.endTime} · '
+              '${_bookingDurationLabel(booking.durationMinutes)}\n'
+              '${booking.transport} · ${booking.language}',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: AppColors.textSecondary,
+                height: 1.45,
+              ),
+            ),
+          ),
+          if (actionable) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    key: const ValueKey('guide-booking-reject'),
+                    onPressed: onReject,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.danger,
+                    ),
+                    child: const Text('거절'),
+                  ),
+                ),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: OutlinedButton(
+                    key: const ValueKey('guide-booking-modify'),
+                    onPressed: onModify,
+                    child: Text(
+                      booking.status == GuideBookingStatus.modified
+                          ? '다시 수정'
+                          : '수정',
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: FilledButton(
+                    key: const ValueKey('guide-booking-accept'),
+                    onPressed: onAccept,
+                    child: const Text('수락'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -310,4 +734,25 @@ class _ChatComposer extends StatelessWidget {
       ),
     );
   }
+}
+
+double _bookingTimeValue(String time) {
+  final parts = time.split(':');
+  final hour = int.tryParse(parts.first) ?? 10;
+  final minute = parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0;
+  return hour + minute / 60;
+}
+
+String _formatBookingTime(double value) {
+  final totalMinutes = (value * 60).round();
+  final hour = totalMinutes ~/ 60;
+  final minute = totalMinutes % 60;
+  return '${hour.toString().padLeft(2, '0')}:'
+      '${minute.toString().padLeft(2, '0')}';
+}
+
+String _bookingDurationLabel(int durationMinutes) {
+  final hours = durationMinutes ~/ 60;
+  final minutes = durationMinutes % 60;
+  return minutes == 0 ? '$hours시간' : '$hours시간 $minutes분';
 }
