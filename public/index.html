@@ -18,6 +18,10 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content"
+  >
   <meta name="description" content="크루즈 여행자를 위한 제주 여행 앱 CRUJEJU">
 
   <!-- iOS meta tags & icons -->
@@ -32,44 +36,133 @@
   <title>CRUJEJU</title>
   <link rel="manifest" href="manifest.json">
   <style>
+    :root {
+      --app-height: 100dvh;
+    }
+
     html,
     body {
       position: fixed;
       inset: 0;
       width: 100%;
-      height: 100%;
+      height: var(--app-height);
+      min-height: var(--app-height);
       margin: 0;
       overflow: hidden;
       overscroll-behavior: none;
+    }
+
+    body > flutter-view {
+      position: fixed !important;
+      inset: 0 !important;
+      width: 100% !important;
+      height: var(--app-height) !important;
     }
   </style>
 </head>
 <body>
   <script>
     (() => {
+      const root = document.documentElement;
+      const viewport = window.visualViewport;
+      let heightBeforeKeyboard = 0;
+      let previousViewportHeight =
+        Math.round(viewport?.height ?? window.innerHeight);
+      let resizeFrame = 0;
+
+      const currentViewportHeight = () =>
+        Math.round(viewport?.height ?? window.innerHeight);
+
       const resetPageOffset = () => {
         window.scrollTo(0, 0);
-        document.documentElement.scrollTop = 0;
+        root.scrollTop = 0;
         document.body.scrollTop = 0;
       };
 
-      const viewport = window.visualViewport;
-      let previousViewportHeight = viewport?.height ?? window.innerHeight;
+      const applyViewportHeight = (height = currentViewportHeight()) => {
+        if (!Number.isFinite(height) || height <= 0) return;
+        root.style.setProperty('--app-height', `${height}px`);
+        resetPageOffset();
+      };
+
+      const notifyFlutterOfResize = () => {
+        applyViewportHeight();
+        window.dispatchEvent(new Event('resize'));
+      };
+
+      const scheduleViewportSync = (notifyFlutter = false) => {
+        cancelAnimationFrame(resizeFrame);
+        resizeFrame = requestAnimationFrame(() => {
+          applyViewportHeight();
+          if (notifyFlutter) {
+            window.dispatchEvent(new Event('resize'));
+          }
+        });
+      };
 
       viewport?.addEventListener('resize', () => {
-        const nextViewportHeight = viewport.height;
-        if (nextViewportHeight > previousViewportHeight + 80) {
-          requestAnimationFrame(resetPageOffset);
+        const nextViewportHeight = currentViewportHeight();
+        const keyboardClosed =
+          nextViewportHeight > previousViewportHeight + 80;
+
+        scheduleViewportSync(keyboardClosed);
+
+        if (keyboardClosed) {
+          [80, 180, 320].forEach((delay) => {
+            window.setTimeout(notifyFlutterOfResize, delay);
+          });
         }
+
         previousViewportHeight = nextViewportHeight;
       });
 
+      window.addEventListener('resize', () => {
+        scheduleViewportSync();
+      });
+
       document.addEventListener(
-        'focusout',
-        () => window.setTimeout(resetPageOffset, 120),
+        'focusin',
+        (event) => {
+          const target = event.target;
+          if (
+            target instanceof HTMLInputElement ||
+            target instanceof HTMLTextAreaElement ||
+            target?.isContentEditable
+          ) {
+            heightBeforeKeyboard = currentViewportHeight();
+          }
+        },
         true,
       );
-      window.addEventListener('pageshow', resetPageOffset);
+
+      document.addEventListener(
+        'focusout',
+        () => {
+          [80, 180, 320].forEach((delay) => {
+            window.setTimeout(() => {
+              const restoredHeight = Math.max(
+                currentViewportHeight(),
+                heightBeforeKeyboard,
+              );
+              applyViewportHeight(restoredHeight);
+              window.dispatchEvent(new Event('resize'));
+            }, delay);
+          });
+        },
+        true,
+      );
+
+      window.addEventListener('orientationchange', () => {
+        heightBeforeKeyboard = 0;
+        window.setTimeout(notifyFlutterOfResize, 200);
+      });
+
+      window.addEventListener('pageshow', () => {
+        heightBeforeKeyboard = 0;
+        notifyFlutterOfResize();
+      });
+
+      applyViewportHeight(previousViewportHeight);
     })();
   </script>
   <script src="flutter_bootstrap.js" async></script>
