@@ -298,9 +298,11 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('bottom-tab-2')));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('explore-saved-button')), findsOneWidget);
+    expect(find.text('5곳'), findsNothing);
     await tester.tap(find.text('지도'));
     await tester.pumpAndSettle();
 
+    expect(find.textContaining('제주 전체'), findsNothing);
     expect(find.text('결제 집중'), findsOneWidget);
     expect(find.text('인기 상승'), findsOneWidget);
     expect(find.text('꾸준한 인기'), findsOneWidget);
@@ -347,7 +349,7 @@ void main() {
     expect(find.text('AI에게 제주 여행을 물어보세요'), findsNothing);
   });
 
-  testWidgets('카드 충전과 사용 내역을 금액 및 카테고리 색으로 구분한다', (tester) async {
+  testWidgets('카드 내역을 한 패널에서 최신순과 무채색 아이콘으로 보여준다', (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final appState = AppState()..issueCard(200000);
@@ -370,25 +372,27 @@ void main() {
     );
     expect(chargeAmount.style?.color, AppColors.success);
     expect(usedAmount.style?.color, AppColors.danger);
-    expect(cafeIcon.color, AppColors.warning);
+    expect(cafeIcon.color, AppColors.textSecondary);
+    expect(find.text('AI 소비 가이드'), findsNothing);
 
     final chargeCard = find.byKey(const ValueKey('payment-CRUJEJU 카드 충전'));
     final cafeCard = find.byKey(const ValueKey('payment-제주 티하우스'));
     final restaurantCard = find.byKey(const ValueKey('payment-바다담은 식당'));
     final shoppingCard = find.byKey(const ValueKey('payment-서귀포 올레마켓'));
-    final decoration = tester.widget<Container>(chargeCard).decoration;
+    final panel = find.byKey(const ValueKey('payment-list-panel'));
+    final decoration = tester.widget<Container>(panel).decoration;
     expect((decoration as BoxDecoration).border, isNotNull);
     expect(
-      tester.getTopLeft(chargeCard).dy,
-      lessThan(tester.getTopLeft(cafeCard).dy),
-    );
-    expect(
-      tester.getTopLeft(cafeCard).dy,
+      tester.getTopLeft(shoppingCard).dy,
       lessThan(tester.getTopLeft(restaurantCard).dy),
     );
     expect(
       tester.getTopLeft(restaurantCard).dy,
-      lessThan(tester.getTopLeft(shoppingCard).dy),
+      lessThan(tester.getTopLeft(cafeCard).dy),
+    );
+    expect(
+      tester.getTopLeft(cafeCard).dy,
+      lessThan(tester.getTopLeft(chargeCard).dy),
     );
   });
 
@@ -508,5 +512,48 @@ void main() {
     expect(find.text('미나 리 가이드'), findsOneWidget);
     expect(find.byKey(const ValueKey('guide-chat-input')), findsOneWidget);
     expect(find.text('새연교와 오설록 중심으로 편안한 동선을 준비해 볼게요.'), findsOneWidget);
+  });
+
+  testWidgets('가이드 예약 옵션에 따라 예상 가격이 실시간으로 바뀐다', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final appState = AppState();
+    addTearDown(appState.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: MainShell(appState: appState),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('bottom-tab-1')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('미나 리'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('옵션 선택'));
+    await tester.pumpAndSettle();
+
+    final total = find.byKey(const ValueKey('guide-booking-total'));
+    expect(tester.widget<Text>(total).data, '150,000원');
+
+    await tester.tap(find.byKey(const ValueKey('transport-premium-van')));
+    await tester.pump();
+    expect(tester.widget<Text>(total).data, '220,000원');
+
+    await tester.tap(find.byKey(const ValueKey('booking-start-10:00')));
+    await tester.pump();
+    expect(tester.widget<Text>(total).data, '240,000원');
+
+    final eightHours = find.byKey(const ValueKey('booking-duration-8'));
+    await tester.ensureVisible(eightHours);
+    await tester.tap(eightHours);
+    await tester.pump();
+    expect(tester.widget<Text>(total).data, '320,000원');
+
+    await tester.tap(find.byKey(const ValueKey('guide-booking-submit')));
+    await tester.pumpAndSettle();
+    expect(appState.selectedGuideId, 'mina');
+    expect(find.textContaining('프리미엄 밴 · 10:00 시작 · 8시간'), findsOneWidget);
   });
 }

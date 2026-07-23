@@ -289,14 +289,269 @@ class _GuideDetailScreenState extends State<GuideDetailScreen> {
           guide: widget.guide,
           appState: widget.appState,
         ),
-        onSelect: () => _selectGuide(context),
+        onSelect: () => _showBookingOptions(context),
       ),
     );
   }
 
-  void _selectGuide(BuildContext context) {
+  Future<void> _showBookingOptions(BuildContext context) async {
+    final transportOptions = [
+      _BookingTransportOption(
+        title: '가이드 승용차',
+        detail: '최대 ${widget.guide.carSeats}인 · 기본 포함',
+        icon: Icons.directions_car_outlined,
+        priceDelta: 0,
+      ),
+      const _BookingTransportOption(
+        title: '프리미엄 밴',
+        detail: '최대 8인 · 넓은 좌석과 짐 공간',
+        icon: Icons.airport_shuttle_outlined,
+        priceDelta: 70000,
+      ),
+      const _BookingTransportOption(
+        title: '택시 동행',
+        detail: '택시비 별도 · 가까운 코스에 적합',
+        icon: Icons.local_taxi_outlined,
+        priceDelta: -30000,
+      ),
+    ];
+    const startTimes = [
+      ('09:30', 0),
+      ('10:00', 20000),
+      ('10:30', 10000),
+      ('11:00', 0),
+    ];
+    const durations = [(4, -50000), (6, 0), (8, 80000)];
+    var selectedTransport = transportOptions.first;
+    var selectedTime = startTimes.first;
+    var selectedDuration = durations[1];
+
+    final selection = await showModalBottomSheet<_GuideBookingSelection>(
+      context: context,
+      useSafeArea: true,
+      isScrollControlled: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          final total =
+              widget.guide.price +
+              selectedTransport.priceDelta +
+              selectedTime.$2 +
+              selectedDuration.$2;
+          return FractionallySizedBox(
+            key: const ValueKey('guide-booking-options'),
+            heightFactor: .92,
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 2, 12, 10),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '예약 옵션을 선택해요',
+                              style: Theme.of(context).textTheme.headlineSmall,
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              '선택한 이동수단과 시간에 따라 가격이 달라져요.',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(sheetContext),
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(),
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '이동수단',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 10),
+                        for (final option in transportOptions)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 9),
+                            child: _BookingOptionTile(
+                              key: ValueKey(
+                                option.title == '프리미엄 밴'
+                                    ? 'transport-premium-van'
+                                    : 'transport-${option.title}',
+                              ),
+                              option: option,
+                              selected: option == selectedTransport,
+                              onTap: () => setSheetState(
+                                () => selectedTransport = option,
+                              ),
+                            ),
+                          ),
+                        const SizedBox(height: 16),
+                        Text(
+                          '투어 시작 시간',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: startTimes.map((time) {
+                            return ChoiceChip(
+                              key: ValueKey('booking-start-${time.$1}'),
+                              label: Text(
+                                time.$2 == 0
+                                    ? time.$1
+                                    : '${time.$1}  +${formatWon(time.$2)}',
+                              ),
+                              selected: time == selectedTime,
+                              showCheckmark: false,
+                              onSelected: (_) =>
+                                  setSheetState(() => selectedTime = time),
+                            );
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 26),
+                        Text(
+                          '이용 시간',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: durations.map((duration) {
+                            return Expanded(
+                              child: Padding(
+                                padding: EdgeInsets.only(
+                                  right: duration.$1 == 8 ? 0 : 8,
+                                ),
+                                child: ChoiceChip(
+                                  key: ValueKey(
+                                    'booking-duration-${duration.$1}',
+                                  ),
+                                  label: SizedBox(
+                                    width: double.infinity,
+                                    child: Text(
+                                      '${duration.$1}시간',
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                  selected: duration == selectedDuration,
+                                  showCheckmark: false,
+                                  onSelected: (_) => setSheetState(
+                                    () => selectedDuration = duration,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 18),
+                        SurfaceCard(
+                          color: AppColors.surfaceSecondary,
+                          child: Column(
+                            children: [
+                              _BookingPriceRow(
+                                label: '6시간 기본 요금',
+                                value: formatWon(widget.guide.price),
+                              ),
+                              const SizedBox(height: 9),
+                              _BookingPriceRow(
+                                label: selectedTransport.title,
+                                value: _priceDeltaLabel(
+                                  selectedTransport.priceDelta,
+                                ),
+                              ),
+                              const SizedBox(height: 9),
+                              _BookingPriceRow(
+                                label: '${selectedTime.$1} 시작',
+                                value: _priceDeltaLabel(selectedTime.$2),
+                              ),
+                              const SizedBox(height: 9),
+                              _BookingPriceRow(
+                                label: '${selectedDuration.$1}시간 이용',
+                                value: _priceDeltaLabel(selectedDuration.$2),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    border: Border(top: BorderSide(color: AppColors.line)),
+                  ),
+                  child: SafeArea(
+                    top: false,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '예상 결제금액',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                              Text(
+                                formatWon(total),
+                                key: const ValueKey('guide-booking-total'),
+                                style: Theme.of(context).textTheme.titleLarge,
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(
+                          width: 158,
+                          child: FilledButton(
+                            key: const ValueKey('guide-booking-submit'),
+                            onPressed: () => Navigator.pop(
+                              sheetContext,
+                              _GuideBookingSelection(
+                                transport: selectedTransport.title,
+                                startTime: selectedTime.$1,
+                                hours: selectedDuration.$1,
+                                total: total,
+                              ),
+                            ),
+                            child: const Text('이 일정 요청하기'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+    if (selection == null || !mounted) return;
+
     widget.appState.chooseGuide(widget.guide.id);
     setState(() {});
+    if (!context.mounted) return;
+    _showBookingComplete(context, selection);
+  }
+
+  void _showBookingComplete(
+    BuildContext context,
+    _GuideBookingSelection selection,
+  ) {
     showModalBottomSheet<void>(
       context: context,
       builder: (context) => Padding(
@@ -324,7 +579,7 @@ class _GuideDetailScreenState extends State<GuideDetailScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              '${widget.guide.name} 가이드가 방문 순서와 최종 가격을 제안해요. 알림이 오면 확인해 주세요.',
+              '${selection.transport} · ${selection.startTime} 시작 · ${selection.hours}시간\n예상금액 ${formatWon(selection.total)}',
               textAlign: TextAlign.center,
               style: Theme.of(
                 context,
@@ -505,6 +760,140 @@ class _GuideDetailScreenState extends State<GuideDetailScreen> {
       ),
     );
   }
+}
+
+class _BookingTransportOption {
+  const _BookingTransportOption({
+    required this.title,
+    required this.detail,
+    required this.icon,
+    required this.priceDelta,
+  });
+
+  final String title;
+  final String detail;
+  final IconData icon;
+  final int priceDelta;
+}
+
+class _GuideBookingSelection {
+  const _GuideBookingSelection({
+    required this.transport,
+    required this.startTime,
+    required this.hours,
+    required this.total,
+  });
+
+  final String transport;
+  final String startTime;
+  final int hours;
+  final int total;
+}
+
+class _BookingOptionTile extends StatelessWidget {
+  const _BookingOptionTile({
+    required this.option,
+    required this.selected,
+    required this.onTap,
+    super.key,
+  });
+
+  final _BookingTransportOption option;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? AppColors.brandWeak : AppColors.surface,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(15),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: selected ? AppColors.brand : AppColors.line,
+              width: selected ? 1.5 : 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: selected ? Colors.white : AppColors.surfaceSecondary,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  option.icon,
+                  size: 20,
+                  color: selected ? AppColors.brand : AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      option.title,
+                      style: Theme.of(context).textTheme.labelMedium,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      option.detail,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                _priceDeltaLabel(option.priceDelta),
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: selected ? AppColors.brand : AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Icon(
+                selected ? Icons.check_circle_rounded : Icons.circle_outlined,
+                size: 21,
+                color: selected ? AppColors.brand : AppColors.textTertiary,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BookingPriceRow extends StatelessWidget {
+  const _BookingPriceRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(label, style: Theme.of(context).textTheme.bodySmall),
+        ),
+        Text(value, style: Theme.of(context).textTheme.labelMedium),
+      ],
+    );
+  }
+}
+
+String _priceDeltaLabel(int amount) {
+  if (amount == 0) return '포함';
+  return '${amount > 0 ? '+' : '-'}${formatWon(amount.abs())}';
 }
 
 class _ReviewFilterButton extends StatelessWidget {
@@ -711,7 +1100,7 @@ class _GuideBottomAction extends StatelessWidget {
                   child: FilledButton(
                     onPressed: selected ? null : onSelect,
                     child: Text(
-                      selected ? '일정 요청을 보냈어요' : '${formatWon(price)}부터 · 선택하기',
+                      selected ? '일정 요청 완료' : '${formatWon(price)}부터 · 옵션 선택',
                     ),
                   ),
                 ),

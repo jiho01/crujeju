@@ -75,8 +75,6 @@ class WalletScreen extends StatelessWidget {
           ),
           SliverToBoxAdapter(child: _PaymentList(records: AppData.payments)),
           const SliverToBoxAdapter(child: SizedBox(height: 30)),
-          const SliverToBoxAdapter(child: _SpendingGuide()),
-          const SliverToBoxAdapter(child: SizedBox(height: 30)),
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -1744,63 +1742,78 @@ class _PaymentList extends StatelessWidget {
   Widget build(BuildContext context) {
     final sortedRecords = List<PaymentRecord>.of(records)
       ..sort(
-        (a, b) => _paymentMinutes(a.time).compareTo(_paymentMinutes(b.time)),
+        (a, b) => _paymentMinutes(b.time).compareTo(_paymentMinutes(a.time)),
       );
     return Padding(
       padding: padding,
-      child: Column(
-        children: sortedRecords.map((record) {
-          final accent = _paymentAccent(record);
-          return Container(
-            key: ValueKey('payment-${record.store}'),
-            margin: const EdgeInsets.only(bottom: 10),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.line),
+      child: Container(
+        key: const ValueKey('payment-list-panel'),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.line),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          children: [
+            for (var index = 0; index < sortedRecords.length; index++) ...[
+              _PaymentRow(record: sortedRecords[index]),
+              if (index != sortedRecords.length - 1)
+                const Divider(height: 1, indent: 72),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PaymentRow extends StatelessWidget {
+  const _PaymentRow({required this.record});
+
+  final PaymentRecord record;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      key: ValueKey('payment-${record.store}'),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      child: Row(
+        children: [
+          Container(
+            width: 46,
+            height: 46,
+            decoration: const BoxDecoration(
+              color: AppColors.surfaceSecondary,
+              shape: BoxShape.circle,
             ),
-            child: Row(
+            child: Icon(record.icon, size: 21, color: AppColors.textSecondary),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 46,
-                  height: 46,
-                  decoration: BoxDecoration(
-                    color: _paymentBackground(record),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(record.icon, size: 21, color: accent),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        record.store,
-                        style: Theme.of(context).textTheme.labelMedium,
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '${record.category} · ${record.time}',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ],
-                  ),
-                ),
                 Text(
-                  '${record.isCharge ? '+' : '-'}${formatWon(record.amount)}',
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: record.isCharge
-                        ? AppColors.success
-                        : AppColors.danger,
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                  ),
+                  record.store,
+                  style: Theme.of(context).textTheme.labelMedium,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${record.category} · ${record.time}',
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],
             ),
-          );
-        }).toList(),
+          ),
+          Text(
+            '${record.isCharge ? '+' : '-'}${formatWon(record.amount)}',
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: record.isCharge ? AppColors.success : AppColors.danger,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1811,61 +1824,6 @@ int _paymentMinutes(String time) {
   if (match == null) return 0;
   return (int.tryParse(match.group(1)!) ?? 0) * 60 +
       (int.tryParse(match.group(2)!) ?? 0);
-}
-
-Color _paymentAccent(PaymentRecord record) {
-  if (record.isCharge) return AppColors.success;
-  return switch (record.category) {
-    '쇼핑' => AppColors.brand,
-    '음식점' => AppColors.danger,
-    '카페' => AppColors.warning,
-    '액티비티' => AppColors.ocean,
-    _ => AppColors.textSecondary,
-  };
-}
-
-Color _paymentBackground(PaymentRecord record) {
-  if (record.isCharge) return AppColors.successWeak;
-  return switch (record.category) {
-    '쇼핑' => AppColors.brandWeak,
-    '음식점' => AppColors.dangerWeak,
-    '카페' => AppColors.warningWeak,
-    '액티비티' => AppColors.oceanWeak,
-    _ => AppColors.surfaceSecondary,
-  };
-}
-
-class _SpendingGuide extends StatelessWidget {
-  const _SpendingGuide();
-
-  @override
-  Widget build(BuildContext context) {
-    return SurfaceCard(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      color: AppColors.brandWeak,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.auto_awesome_rounded,
-                color: AppColors.brand,
-                size: 21,
-              ),
-              const SizedBox(width: 8),
-              Text('AI 소비 가이드', style: Theme.of(context).textTheme.titleSmall),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            '남은 일정의 식사와 기념품 예상비용은 약 12만원이에요. 지금 잔액이면 66,400원이 남아요.',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _InfoTile extends StatelessWidget {

@@ -71,22 +71,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _SegmentedSwitch(
-                    showMap: _showMap,
-                    onChanged: (value) => setState(() => _showMap = value),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  '${_filteredPlaces.length}곳',
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: AppColors.textTertiary,
-                  ),
-                ),
-              ],
+            child: _SegmentedSwitch(
+              showMap: _showMap,
+              onChanged: (value) => setState(() => _showMap = value),
             ),
           ),
           SizedBox(
@@ -640,32 +627,7 @@ class _MapViewState extends State<_MapView> {
                   ),
                 ),
               ),
-              Positioned(
-                left: 14,
-                top: 14,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(999),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x160F1720),
-                        blurRadius: 10,
-                        offset: Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: Text(
-                    '제주 전체 · 드래그로 이동',
-                    style: Theme.of(context).textTheme.labelMedium,
-                  ),
-                ),
-              ),
-              const Positioned(left: 14, top: 56, child: _MapHotLegend()),
+              const Positioned(left: 14, top: 14, child: _MapHotLegend()),
               Positioned(
                 right: 14,
                 top: 14,
