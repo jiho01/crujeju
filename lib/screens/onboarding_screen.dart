@@ -14,9 +14,12 @@ class OnboardingScreen extends StatefulWidget {
   State<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
-class _OnboardingScreenState extends State<OnboardingScreen> {
+class _OnboardingScreenState extends State<OnboardingScreen>
+    with WidgetsBindingObserver {
   final PageController _pageController = PageController();
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _cruiseScrollController = ScrollController();
+  final FocusNode _cruiseSearchFocusNode = FocusNode();
 
   int _step = 0;
   String _language = '한국어';
@@ -29,6 +32,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final Set<String> _interests = {};
   String? _transport;
   bool _submitting = false;
+  bool _keyboardWasVisible = false;
+  double? _cruiseOffsetBeforeKeyboard;
 
   static const _languages = [
     ('한국어', 'KO'),
@@ -161,9 +166,34 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _cruiseSearchFocusNode.addListener(_handleCruiseSearchFocus);
+  }
+
+  @override
+  void didChangeMetrics() {
+    if (!mounted) return;
+    final keyboardVisible = View.of(context).viewInsets.bottom > 0;
+    if (keyboardVisible && !_keyboardWasVisible) {
+      _captureCruiseScrollPosition();
+    } else if (!keyboardVisible && _keyboardWasVisible) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _restoreCruiseScrollPosition();
+      });
+    }
+    _keyboardWasVisible = keyboardVisible;
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _cruiseSearchFocusNode.removeListener(_handleCruiseSearchFocus);
     _pageController.dispose();
     _searchController.dispose();
+    _cruiseScrollController.dispose();
+    _cruiseSearchFocusNode.dispose();
     super.dispose();
   }
 
@@ -172,6 +202,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final basicCopy = _basicCopy;
     return Scaffold(
       backgroundColor: AppColors.surfaceSecondary,
+      resizeToAvoidBottomInset: false,
       body: AppPage(
         child: GestureDetector(
           onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
@@ -291,6 +322,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final cruises = _visibleCruises;
     return CustomScrollView(
       key: const PageStorageKey('onboarding-cruise'),
+      controller: _cruiseScrollController,
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       slivers: [
         const SliverPadding(
           padding: EdgeInsets.fromLTRB(20, 26, 20, 0),
@@ -330,8 +363,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
           sliver: SliverToBoxAdapter(
             child: TextField(
+              key: const ValueKey('onboarding-cruise-search'),
               controller: _searchController,
+              focusNode: _cruiseSearchFocusNode,
               onChanged: (value) => setState(() => _query = value),
+              onSubmitted: (_) => _cruiseSearchFocusNode.unfocus(),
+              onTapOutside: (_) => _cruiseSearchFocusNode.unfocus(),
+              textInputAction: TextInputAction.search,
               decoration: InputDecoration(
                 hintText: '선박명 또는 크루즈 회사 검색',
                 prefixIcon: const Icon(Icons.search_rounded),
@@ -370,6 +408,37 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ),
           ),
       ],
+    );
+  }
+
+  void _handleCruiseSearchFocus() {
+    if (_cruiseSearchFocusNode.hasFocus) {
+      _captureCruiseScrollPosition();
+    } else if (!_keyboardWasVisible) {
+      _cruiseOffsetBeforeKeyboard = null;
+    }
+  }
+
+  void _captureCruiseScrollPosition() {
+    if (_step != 1 || !_cruiseScrollController.hasClients) return;
+    _cruiseOffsetBeforeKeyboard ??= _cruiseScrollController.offset;
+  }
+
+  void _restoreCruiseScrollPosition() {
+    if (!mounted) return;
+    final previousOffset = _cruiseOffsetBeforeKeyboard;
+    _cruiseOffsetBeforeKeyboard = null;
+    _cruiseSearchFocusNode.unfocus();
+    if (previousOffset == null || !_cruiseScrollController.hasClients) return;
+    final position = _cruiseScrollController.position;
+    final target = previousOffset
+        .clamp(position.minScrollExtent, position.maxScrollExtent)
+        .toDouble();
+    if ((_cruiseScrollController.offset - target).abs() < .5) return;
+    _cruiseScrollController.animateTo(
+      target,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
     );
   }
 

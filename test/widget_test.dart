@@ -6,6 +6,7 @@ import 'package:crujeju/app.dart';
 import 'package:crujeju/data/app_data.dart';
 import 'package:crujeju/models/models.dart';
 import 'package:crujeju/screens/main_shell.dart';
+import 'package:crujeju/screens/onboarding_screen.dart';
 import 'package:crujeju/state/app_state.dart';
 import 'package:crujeju/theme/app_theme.dart';
 import 'package:crujeju/widgets/common.dart';
@@ -143,6 +144,37 @@ void main() {
 
     expect(find.byKey(const ValueKey('crujeju-brand-logo')), findsOneWidget);
     expect(find.text('곧, 제주에서 만나요'), findsOneWidget);
+  });
+
+  testWidgets('선박 검색 키보드를 닫으면 이전 화면 위치로 돌아온다', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    addTearDown(tester.view.resetViewInsets);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: OnboardingScreen(onCompleted: (_) async {}),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('다음'));
+    await tester.pumpAndSettle();
+
+    final search = find.byKey(const ValueKey('onboarding-cruise-search'));
+    final initialSearchTop = tester.getTopLeft(search).dy;
+
+    await tester.tap(search);
+    await tester.pump();
+    tester.view.viewInsets = const FakeViewPadding(bottom: 360);
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(search).dy, closeTo(initialSearchTop, 1));
+
+    tester.view.viewInsets = FakeViewPadding.zero;
+    await tester.pumpAndSettle();
+
+    expect(tester.getTopLeft(search).dy, closeTo(initialSearchTop, 1));
+    expect(tester.widget<TextField>(search).focusNode?.hasFocus, isFalse);
   });
 
   testWidgets('홈을 스크롤해도 브랜드 상단바는 고정된다', (tester) async {
@@ -498,6 +530,44 @@ void main() {
     final sheetTop = tester.getTopLeft(list).dy;
     expect(sheetTop, greaterThanOrEqualTo(tagBottom + 10));
     expect(sheetTop, lessThanOrEqualTo(tagBottom + 14));
+  });
+
+  testWidgets('지도 검색 키보드를 닫으면 하단 목록 위치를 복원한다', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    addTearDown(tester.view.resetViewInsets);
+    final appState = AppState();
+    addTearDown(appState.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: MainShell(appState: appState),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('bottom-tab-2')));
+    await tester.pumpAndSettle();
+
+    final search = find.byKey(const ValueKey('explore-map-search'));
+    final list = find.byKey(const ValueKey('explore-place-list-scroll'));
+    final initialSearchTop = tester.getTopLeft(search).dy;
+    final initialSheetTop = tester.getTopLeft(list).dy;
+
+    await tester.tap(search);
+    await tester.pump();
+    tester.view.viewInsets = const FakeViewPadding(bottom: 360);
+    await tester.pumpAndSettle();
+    await tester.drag(list, const Offset(0, -260));
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(list).dy, lessThan(initialSheetTop - 20));
+
+    tester.view.viewInsets = FakeViewPadding.zero;
+    await tester.pumpAndSettle();
+
+    expect(tester.getTopLeft(search).dy, closeTo(initialSearchTop, 1));
+    expect(tester.getTopLeft(list).dy, closeTo(initialSheetTop, 1));
+    expect(tester.widget<TextField>(search).focusNode?.hasFocus, isFalse);
   });
 
   testWidgets('발급된 홈 카드 요약에 카드 번호와 잔액을 표시한다', (tester) async {

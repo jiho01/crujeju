@@ -16,13 +16,18 @@ class ExploreScreen extends StatefulWidget {
   State<ExploreScreen> createState() => _ExploreScreenState();
 }
 
-class _ExploreScreenState extends State<ExploreScreen> {
+class _ExploreScreenState extends State<ExploreScreen>
+    with WidgetsBindingObserver {
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
   final DraggableScrollableController _sheetController =
       DraggableScrollableController();
   String _category = '전체';
   String _query = '';
   Place? _selectedPlace;
+  bool _keyboardWasVisible = false;
+  double? _sheetSizeBeforeKeyboard;
+  double _maxSheetSize = .80;
 
   static const _categories = [
     ('전체', Icons.near_me_outlined),
@@ -32,8 +37,32 @@ class _ExploreScreenState extends State<ExploreScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _searchFocusNode.addListener(_handleSearchFocus);
+  }
+
+  @override
+  void didChangeMetrics() {
+    if (!mounted) return;
+    final keyboardVisible = View.of(context).viewInsets.bottom > 0;
+    if (keyboardVisible && !_keyboardWasVisible) {
+      _captureSheetSize();
+    } else if (!keyboardVisible && _keyboardWasVisible) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _restoreMapAfterKeyboard();
+      });
+    }
+    _keyboardWasVisible = keyboardVisible;
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _searchFocusNode.removeListener(_handleSearchFocus);
     _searchController.dispose();
+    _searchFocusNode.dispose();
     _sheetController.dispose();
     super.dispose();
   }
@@ -84,7 +113,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       child: TextField(
                         key: const ValueKey('explore-map-search'),
                         controller: _searchController,
+                        focusNode: _searchFocusNode,
                         onChanged: _updateQuery,
+                        onSubmitted: (_) => _searchFocusNode.unfocus(),
+                        onTapOutside: (_) => _searchFocusNode.unfocus(),
+                        textInputAction: TextInputAction.search,
                         decoration: InputDecoration(
                           hintText: '장소, 음식, 지역을 찾아보세요',
                           prefixIcon: const Icon(Icons.search_rounded),
@@ -167,6 +200,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                           constraints.maxHeight)
                       .clamp(.55, .90)
                       .toDouble();
+              _maxSheetSize = maxSheetSize;
 
               return DraggableScrollableSheet(
                 key: const ValueKey('explore-bottom-sheet'),
@@ -219,6 +253,34 @@ class _ExploreScreenState extends State<ExploreScreen> {
       _query = value;
       _selectedPlace = null;
     });
+  }
+
+  void _handleSearchFocus() {
+    if (_searchFocusNode.hasFocus) {
+      _captureSheetSize();
+    } else if (!_keyboardWasVisible) {
+      _sheetSizeBeforeKeyboard = null;
+    }
+  }
+
+  void _captureSheetSize() {
+    if (!_sheetController.isAttached) return;
+    _sheetSizeBeforeKeyboard ??= _sheetController.size;
+  }
+
+  void _restoreMapAfterKeyboard() {
+    if (!mounted) return;
+    final previousSize = _sheetSizeBeforeKeyboard;
+    _sheetSizeBeforeKeyboard = null;
+    _searchFocusNode.unfocus();
+    if (previousSize == null || !_sheetController.isAttached) return;
+    final target = previousSize.clamp(.17, _maxSheetSize).toDouble();
+    if ((_sheetController.size - target).abs() < .001) return;
+    _sheetController.animateTo(
+      target,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   void _updateCategory(String value) {

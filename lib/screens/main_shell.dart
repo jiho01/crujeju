@@ -43,6 +43,7 @@ class _MainShellState extends State<MainShell> {
       animation: widget.appState,
       builder: (context, _) {
         return Scaffold(
+          resizeToAvoidBottomInset: _index != 2,
           body: AppPage(
             child: IndexedStack(
               index: _index,
