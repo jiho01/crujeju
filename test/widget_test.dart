@@ -577,5 +577,20 @@ void main() {
     expect(appState.selectedGuideId, 'mina');
     expect(find.textContaining('프리미엄 밴 · English'), findsOneWidget);
     expect(find.textContaining('10:00–17:00 · 7시간'), findsOneWidget);
+
+    await tester.tap(find.text('확인'));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('prepaid-card-recommendation')),
+      findsOneWidget,
+    );
+    expect(find.text('CRUJEJU 선불카드'), findsOneWidget);
+    expect(find.text('환전 없이'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('recommended-card-apply')));
+    await tester.pumpAndSettle();
+    expect(find.text('카드 신청'), findsOneWidget);
+    expect(find.text('1/4'), findsOneWidget);
+    expect(find.textContaining('카드를 어디서'), findsOneWidget);
   });
 }

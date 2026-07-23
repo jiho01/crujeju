@@ -26,6 +26,17 @@ class _MainShellState extends State<MainShell> {
     setState(() => _index = index);
   }
 
+  void _openCardApplication() {
+    Navigator.of(context).popUntil((route) => route.isFirst);
+    if (_index != 3) {
+      setState(() => _index = 3);
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || widget.appState.cardApplicationComplete) return;
+      Navigator.of(context).push(cardApplicationRoute(widget.appState));
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
@@ -36,8 +47,15 @@ class _MainShellState extends State<MainShell> {
             child: IndexedStack(
               index: _index,
               children: [
-                HomeScreen(appState: widget.appState, onTabChanged: _selectTab),
-                GuidesScreen(appState: widget.appState),
+                HomeScreen(
+                  appState: widget.appState,
+                  onTabChanged: _selectTab,
+                  onCardApplicationRequested: _openCardApplication,
+                ),
+                GuidesScreen(
+                  appState: widget.appState,
+                  onCardApplicationRequested: _openCardApplication,
+                ),
                 ExploreScreen(appState: widget.appState),
                 WalletScreen(appState: widget.appState),
               ],

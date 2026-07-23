@@ -12,11 +12,13 @@ class HomeScreen extends StatelessWidget {
   const HomeScreen({
     required this.appState,
     required this.onTabChanged,
+    required this.onCardApplicationRequested,
     super.key,
   });
 
   final AppState appState;
   final ValueChanged<int> onTabChanged;
+  final VoidCallback onCardApplicationRequested;
 
   @override
   Widget build(BuildContext context) {
@@ -153,7 +155,11 @@ class HomeScreen extends StatelessWidget {
   void _openGuide(BuildContext context, Guide guide) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => GuideDetailScreen(guide: guide, appState: appState),
+        builder: (_) => GuideDetailScreen(
+          guide: guide,
+          appState: appState,
+          onCardApplicationRequested: onCardApplicationRequested,
+        ),
       ),
     );
   }

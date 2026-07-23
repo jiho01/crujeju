@@ -9,9 +9,14 @@ import 'guide_detail_screen.dart';
 import 'messages_screen.dart';
 
 class GuidesScreen extends StatefulWidget {
-  const GuidesScreen({required this.appState, super.key});
+  const GuidesScreen({
+    required this.appState,
+    required this.onCardApplicationRequested,
+    super.key,
+  });
 
   final AppState appState;
+  final VoidCallback onCardApplicationRequested;
 
   @override
   State<GuidesScreen> createState() => _GuidesScreenState();
@@ -218,8 +223,11 @@ class _GuidesScreenState extends State<GuidesScreen> {
   void _openGuide(BuildContext context, Guide guide) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) =>
-            GuideDetailScreen(guide: guide, appState: widget.appState),
+        builder: (_) => GuideDetailScreen(
+          guide: guide,
+          appState: widget.appState,
+          onCardApplicationRequested: widget.onCardApplicationRequested,
+        ),
       ),
     );
   }

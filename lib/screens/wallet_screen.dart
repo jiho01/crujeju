@@ -8,6 +8,12 @@ import '../theme/app_theme.dart';
 import '../widgets/ai_assistant_sheet.dart';
 import '../widgets/common.dart';
 
+Route<void> cardApplicationRoute(AppState appState) {
+  return MaterialPageRoute<void>(
+    builder: (_) => _CardApplicationScreen(appState: appState),
+  );
+}
+
 class WalletScreen extends StatelessWidget {
   const WalletScreen({required this.appState, super.key});
 
@@ -18,11 +24,8 @@ class WalletScreen extends StatelessWidget {
     if (!appState.cardApplicationComplete) {
       return _UnissuedWallet(
         appState: appState,
-        onApply: () => Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => _CardApplicationScreen(appState: appState),
-          ),
-        ),
+        onApply: () =>
+            Navigator.of(context).push(cardApplicationRoute(appState)),
       );
     }
     if (appState.cardAwaitingPickup) {

@@ -11,11 +11,13 @@ class GuideDetailScreen extends StatefulWidget {
   const GuideDetailScreen({
     required this.guide,
     required this.appState,
+    required this.onCardApplicationRequested,
     super.key,
   });
 
   final Guide guide;
   final AppState appState;
+  final VoidCallback onCardApplicationRequested;
 
   @override
   State<GuideDetailScreen> createState() => _GuideDetailScreenState();
@@ -605,14 +607,16 @@ class _GuideDetailScreenState extends State<GuideDetailScreen> {
     widget.appState.chooseGuide(widget.guide.id);
     setState(() {});
     if (!context.mounted) return;
-    _showBookingComplete(context, selection);
+    await _showBookingComplete(context, selection);
+    if (!context.mounted || widget.appState.cardApplicationComplete) return;
+    await _showCardRecommendation(context);
   }
 
-  void _showBookingComplete(
+  Future<void> _showBookingComplete(
     BuildContext context,
     _GuideBookingSelection selection,
   ) {
-    showModalBottomSheet<void>(
+    return showModalBottomSheet<void>(
       context: context,
       builder: (context) => Padding(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
@@ -655,6 +659,169 @@ class _GuideDetailScreenState extends State<GuideDetailScreen> {
                 onPressed: () => Navigator.pop(context),
                 child: const Text('확인'),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showCardRecommendation(BuildContext context) {
+    return showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      isScrollControlled: true,
+      builder: (sheetContext) => Padding(
+        key: const ValueKey('prepaid-card-recommendation'),
+        padding: const EdgeInsets.fromLTRB(20, 2, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      MetaPill(
+                        label: '가이드 예약 다음 준비',
+                        selected: true,
+                        compact: true,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        '선불카드도 함께\n준비해 볼까요?',
+                        style: Theme.of(context).textTheme.headlineMedium,
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(sheetContext),
+                  icon: const Icon(Icons.close_rounded),
+                  tooltip: '닫기',
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFE9F7FA), Color(0xFFF1F5FF)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(
+                  color: AppColors.brand.withValues(alpha: .12),
+                ),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 54,
+                        height: 54,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(17),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x14123A63),
+                              blurRadius: 12,
+                              offset: Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.credit_card_rounded,
+                          color: AppColors.brand,
+                          size: 28,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'CRUJEJU 선불카드',
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              '${widget.appState.cruise.port}에서 수령하고 바로 결제해요',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 17),
+                  const Divider(height: 1),
+                  const SizedBox(height: 15),
+                  const Row(
+                    children: [
+                      Expanded(
+                        child: _CardRecommendationBenefit(
+                          icon: Icons.currency_exchange_rounded,
+                          label: '환전 없이',
+                        ),
+                      ),
+                      Expanded(
+                        child: _CardRecommendationBenefit(
+                          icon: Icons.map_outlined,
+                          label: '항구 수령',
+                        ),
+                      ),
+                      Expanded(
+                        child: _CardRecommendationBenefit(
+                          icon: Icons.account_balance_wallet_outlined,
+                          label: '잔액 환불',
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '지금 신청해 두면 입항 후 가이드 투어와 결제를 바로 시작할 수 있어요.',
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(sheetContext),
+                    child: const Text('다음에 할게요'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  flex: 2,
+                  child: FilledButton(
+                    key: const ValueKey('recommended-card-apply'),
+                    onPressed: () {
+                      Navigator.pop(sheetContext);
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted) widget.onCardApplicationRequested();
+                      });
+                    },
+                    child: const Text('선불카드 발급받기'),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -855,6 +1022,29 @@ class _GuideBookingSelection {
   final String endTime;
   final int durationMinutes;
   final int total;
+}
+
+class _CardRecommendationBenefit extends StatelessWidget {
+  const _CardRecommendationBenefit({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Icon(icon, size: 21, color: AppColors.brand),
+        const SizedBox(height: 6),
+        Text(
+          label,
+          style: Theme.of(
+            context,
+          ).textTheme.labelSmall?.copyWith(color: AppColors.textSecondary),
+        ),
+      ],
+    );
+  }
 }
 
 String _formatBookingTime(double value) {
