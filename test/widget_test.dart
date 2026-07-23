@@ -836,20 +836,21 @@ void main() {
     expect(find.textContaining('가이드 일정 요청을 보냈어요.'), findsOneWidget);
     expect(find.byKey(const ValueKey('guide-booking-accept')), findsOneWidget);
     expect(find.byKey(const ValueKey('guide-booking-reject')), findsOneWidget);
-    expect(
-      find.byKey(const ValueKey('guide-booking-itinerary')),
-      findsOneWidget,
-    );
+    expect(find.byKey(const ValueKey('guide-booking-itinerary')), findsNothing);
     expect(
       find.byKey(const ValueKey('guide-booking-selected-place-saeyeongyo')),
-      findsOneWidget,
+      findsNothing,
     );
     expect(
       find.byKey(const ValueKey('guide-booking-selected-place-oseolrok')),
-      findsOneWidget,
+      findsNothing,
     );
     expect(find.text('가이드 계획 일정'), findsOneWidget);
-    expect(find.text('선택 장소 반영'), findsOneWidget);
+    expect(find.text('선택 장소 반영'), findsNothing);
+    final route = tester.widget<Text>(
+      find.byKey(const ValueKey('guide-booking-route')),
+    );
+    expect(route.data, '강정항 → 새연교 → 제주 로컬 식당 → 오설록 티뮤지엄 → 강정항');
 
     await tester.tap(find.byKey(const ValueKey('guide-booking-modify')));
     await tester.pumpAndSettle();

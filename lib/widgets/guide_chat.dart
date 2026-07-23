@@ -442,6 +442,11 @@ class _GuideBookingRequestCard extends StatelessWidget {
       cruise: appState.cruise,
       selectedPlaces: selectedPlaces,
     );
+    final route = [
+      appState.cruise.port,
+      ...itinerary.skip(1).take(itinerary.length - 2).map((stop) => stop.title),
+      appState.cruise.port,
+    ].join(' → ');
     return Container(
       key: const ValueKey('guide-booking-request-card'),
       padding: const EdgeInsets.all(15),
@@ -511,110 +516,38 @@ class _GuideBookingRequestCard extends StatelessWidget {
               color: AppColors.surfaceSecondary,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Text(
-              '${booking.startTime}–${booking.endTime} · '
-              '${_bookingDurationLabel(booking.durationMinutes)}\n'
-              '${booking.transport} · ${booking.language}',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppColors.textSecondary,
-                height: 1.45,
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            key: const ValueKey('guide-booking-itinerary'),
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.brandWeak.withValues(alpha: .58),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.brand.withValues(alpha: .10)),
-            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.bookmark_added_outlined,
-                      size: 17,
-                      color: AppColors.brand,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      '내가 담은 장소',
-                      style: Theme.of(context).textTheme.labelSmall,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                if (selectedPlaces.isEmpty)
-                  Text(
-                    '선택한 장소가 없어 가이드 추천 동선으로 구성했어요',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  )
-                else
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: [
-                      for (final place in selectedPlaces)
-                        Container(
-                          key: ValueKey(
-                            'guide-booking-selected-place-${place.id}',
-                          ),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 9,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(999),
-                            border: Border.all(
-                              color: AppColors.brand.withValues(alpha: .15),
-                            ),
-                          ),
-                          child: Text(
-                            place.name,
-                            style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(color: AppColors.brandNavy),
-                          ),
-                        ),
-                    ],
+                Text(
+                  '${booking.startTime}–${booking.endTime} · '
+                  '${_bookingDurationLabel(booking.durationMinutes)}\n'
+                  '${booking.transport} · ${booking.language}',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                    height: 1.45,
                   ),
+                ),
                 const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 11),
+                  padding: EdgeInsets.symmetric(vertical: 8),
                   child: Divider(),
                 ),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.route_outlined,
-                      size: 17,
-                      color: AppColors.brand,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      '가이드 계획 일정',
-                      style: Theme.of(context).textTheme.labelSmall,
-                    ),
-                    const Spacer(),
-                    Text(
-                      '선택 장소 반영',
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: AppColors.brand,
-                        fontSize: 10,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                for (var index = 0; index < itinerary.length; index++)
-                  _CompactGuidePlanRow(
-                    stop: itinerary[index],
-                    last: index == itinerary.length - 1,
+                Text(
+                  '가이드 계획 일정',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                    height: 1.45,
                   ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  route,
+                  key: const ValueKey('guide-booking-route'),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                    height: 1.45,
+                  ),
+                ),
               ],
             ),
           ),
@@ -655,74 +588,6 @@ class _GuideBookingRequestCard extends StatelessWidget {
               ],
             ),
           ],
-        ],
-      ),
-    );
-  }
-}
-
-class _CompactGuidePlanRow extends StatelessWidget {
-  const _CompactGuidePlanRow({required this.stop, required this.last});
-
-  final GuideItineraryStop stop;
-  final bool last;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: last ? 0 : 7),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 39,
-            child: Text(
-              stop.time,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: AppColors.textSecondary,
-                fontSize: 10,
-                fontFeatures: const [FontFeature.tabularFigures()],
-              ),
-            ),
-          ),
-          Container(
-            width: 7,
-            height: 7,
-            decoration: BoxDecoration(
-              color: stop.fromTravelerSelection
-                  ? AppColors.brand
-                  : AppColors.textTertiary,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              stop.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: stop.fromTravelerSelection
-                    ? AppColors.brandNavy
-                    : AppColors.textPrimary,
-              ),
-            ),
-          ),
-          if (stop.fromTravelerSelection)
-            Container(
-              margin: const EdgeInsets.only(left: 5),
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                '선택',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: AppColors.brand,
-                  fontSize: 9,
-                ),
-              ),
-            ),
         ],
       ),
     );
