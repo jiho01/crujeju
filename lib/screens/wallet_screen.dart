@@ -5,7 +5,6 @@ import '../data/app_data.dart';
 import '../models/models.dart';
 import '../state/app_state.dart';
 import '../theme/app_theme.dart';
-import '../widgets/ai_assistant_sheet.dart';
 import '../widgets/common.dart';
 
 Route<void> cardApplicationRoute(AppState appState) {
@@ -364,14 +363,6 @@ class _UnissuedWallet extends StatelessWidget {
             child: PageHeader(
               title: 'CRUJEJU 카드',
               subtitle: '환전 없이 제주 어디서나 결제해요',
-              action: RoundIconButton(
-                icon: Icons.auto_awesome_rounded,
-                onPressed: () => showAiAssistant(
-                  context,
-                  initialQuestion: '제주 여행에 카드를 얼마 충전하면 좋을까?',
-                ),
-                tooltip: 'AI에게 충전금액 물어보기',
-              ),
             ),
           ),
           SliverToBoxAdapter(

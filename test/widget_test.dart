@@ -272,6 +272,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('bottom-tab-3')));
     await tester.pumpAndSettle();
     expect(find.text('아직 연결된 카드가 없어요'), findsOneWidget);
+    expect(find.byTooltip('AI에게 충전금액 물어보기'), findsNothing);
 
     final applyButton = find.text('CRUJEJU 카드 신청하기');
     await tester.ensureVisible(applyButton);
