@@ -65,18 +65,20 @@ class _MainShellState extends State<MainShell> {
             currentIndex: _index,
             onSelected: _selectTab,
           ),
-          floatingActionButton: FloatingActionButton(
-            key: const ValueKey('global-ai-assistant'),
-            heroTag: 'global-ai-assistant',
-            onPressed: () => showAiAssistant(context),
-            elevation: 3,
-            highlightElevation: 1,
-            backgroundColor: AppColors.brand,
-            foregroundColor: Colors.white,
-            shape: const CircleBorder(),
-            tooltip: 'AI 여행 도우미',
-            child: const Icon(Icons.auto_awesome_rounded, size: 24),
-          ),
+          floatingActionButton: _index == 2
+              ? null
+              : FloatingActionButton(
+                  key: const ValueKey('global-ai-assistant'),
+                  heroTag: 'global-ai-assistant',
+                  onPressed: () => showAiAssistant(context),
+                  elevation: 3,
+                  highlightElevation: 1,
+                  backgroundColor: AppColors.brand,
+                  foregroundColor: Colors.white,
+                  shape: const CircleBorder(),
+                  tooltip: 'AI 여행 도우미',
+                  child: const Icon(Icons.auto_awesome_rounded, size: 24),
+                ),
           floatingActionButtonLocation: const _AppEndFloatLocation(),
         );
       },

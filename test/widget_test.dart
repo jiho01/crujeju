@@ -67,7 +67,8 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('bottom-tab-2')));
     await tester.pumpAndSettle();
-    expect(find.text('기항 시간 안에 다녀올 수 있는 장소예요'), findsOneWidget);
+    expect(find.byKey(const ValueKey('explore-map-search')), findsOneWidget);
+    expect(find.byKey(const ValueKey('explore-bottom-sheet')), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('bottom-tab-3')));
     await tester.pumpAndSettle();
@@ -274,7 +275,7 @@ void main() {
     expect(find.text('언어 · 2개'), findsOneWidget);
   });
 
-  testWidgets('모든 핵심 탭에서 우측 하단 AI 도우미를 연다', (tester) async {
+  testWidgets('둘러보기를 제외한 핵심 탭에서 우측 하단 AI 도우미를 연다', (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final appState = AppState();
@@ -294,6 +295,10 @@ void main() {
       }
 
       final assistantButton = find.byKey(const ValueKey('global-ai-assistant'));
+      if (index == 2) {
+        expect(assistantButton, findsNothing);
+        continue;
+      }
       expect(assistantButton, findsOneWidget);
       await tester.tap(assistantButton);
       await tester.pumpAndSettle();
@@ -318,10 +323,28 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('bottom-tab-2')));
     await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('explore-saved-button')), findsOneWidget);
-    expect(find.text('5곳'), findsNothing);
-    await tester.tap(find.text('지도'));
-    await tester.pumpAndSettle();
+    final search = find.byKey(const ValueKey('explore-map-search'));
+    final savedButton = find.byKey(const ValueKey('explore-saved-button'));
+    expect(find.byKey(const ValueKey('explore-map-layout')), findsOneWidget);
+    expect(search, findsOneWidget);
+    expect(savedButton, findsOneWidget);
+    expect(
+      tester.getTopLeft(savedButton).dx,
+      greaterThan(tester.getTopLeft(search).dx),
+    );
+    expect(find.byKey(const ValueKey('explore-category-전체')), findsOneWidget);
+    expect(find.byKey(const ValueKey('explore-category-자연')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('explore-place-list-sheet')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('explore-place-row-saeyeongyo')),
+      findsOneWidget,
+    );
+    expect(find.text('목록'), findsNothing);
+    expect(find.text('지도'), findsNothing);
+    expect(find.byKey(const ValueKey('global-ai-assistant')), findsNothing);
 
     expect(find.textContaining('제주 전체'), findsNothing);
     expect(find.text('결제 집중'), findsOneWidget);
@@ -358,19 +381,29 @@ void main() {
     await tester.tap(marker);
     await tester.pumpAndSettle();
     expect(find.text('최근 결제 214건'), findsOneWidget);
-    expect(find.byKey(const ValueKey('map-place-preview')), findsOneWidget);
-
-    await tester.tap(find.byKey(const ValueKey('map-place-preview')));
-    await tester.pumpAndSettle();
-    expect(find.text('새연교'), findsWidgets);
-    expect(find.byIcon(Icons.arrow_back_rounded), findsOneWidget);
-    final placeReviewTitle = find.text('최근 크루즈 여행자 후기 3');
-    await tester.scrollUntilVisible(
-      placeReviewTitle,
-      450,
-      scrollable: find.byType(Scrollable).last,
+    expect(
+      find.byKey(const ValueKey('explore-place-detail-saeyeongyo')),
+      findsOneWidget,
     );
-    expect(find.text('최근 크루즈 여행자 후기 3'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('explore-selected-place-name')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('explore-place-back-to-list')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('map-place-preview')), findsNothing);
+
+    final detailScroll = find.byKey(
+      const ValueKey('explore-place-detail-scroll'),
+    );
+    for (var index = 0; index < 4; index++) {
+      await tester.drag(detailScroll, const Offset(0, -500));
+      await tester.pumpAndSettle();
+    }
+    final placeReviewTitle = find.text('최근 크루즈 여행자 후기 3');
+    expect(placeReviewTitle, findsOneWidget);
   });
 
   testWidgets('발급된 홈 카드 요약에 카드 번호와 잔액을 표시한다', (tester) async {

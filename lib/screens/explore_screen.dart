@@ -6,7 +6,6 @@ import '../state/app_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ai_assistant_sheet.dart';
 import '../widgets/common.dart';
-import 'place_detail_screen.dart';
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({required this.appState, super.key});
@@ -19,14 +18,23 @@ class ExploreScreen extends StatefulWidget {
 
 class _ExploreScreenState extends State<ExploreScreen> {
   final TextEditingController _searchController = TextEditingController();
-  bool _showMap = false;
+  final DraggableScrollableController _sheetController =
+      DraggableScrollableController();
   String _category = '전체';
   String _query = '';
-  Place _selectedPlace = AppData.places.first;
+  Place? _selectedPlace;
+
+  static const _categories = [
+    ('전체', Icons.near_me_outlined),
+    ('자연', Icons.landscape_outlined),
+    ('맛집', Icons.restaurant_outlined),
+    ('문화', Icons.museum_outlined),
+  ];
 
   @override
   void dispose() {
     _searchController.dispose();
+    _sheetController.dispose();
     super.dispose();
   }
 
@@ -46,152 +54,179 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      bottom: false,
-      child: Column(
-        children: [
-          PageHeader(
-            title: '둘러보기',
-            subtitle: '기항 시간 안에 다녀올 수 있는 장소예요',
-            action: _SavedPlacesHeaderButton(
-              count: widget.appState.savedPlaceIds.length,
-              onTap: () => _showSavedPlaces(context),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: TextField(
-              controller: _searchController,
-              onChanged: (value) => setState(() => _query = value),
-              decoration: const InputDecoration(
-                hintText: '장소, 음식, 지역을 찾아보세요',
-                prefixIcon: Icon(Icons.search_rounded),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
-            child: _SegmentedSwitch(
-              showMap: _showMap,
-              onChanged: (value) => setState(() => _showMap = value),
-            ),
-          ),
-          SizedBox(
-            height: 52,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              children: ['전체', '자연', '맛집', '문화'].map((category) {
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: ChoiceChip(
-                    label: Text(category),
-                    selected: _category == category,
-                    showCheckmark: false,
-                    onSelected: (_) => setState(() => _category = category),
-                    labelStyle: Theme.of(context).textTheme.labelMedium
-                        ?.copyWith(
-                          color: _category == category
-                              ? AppColors.brand
-                              : AppColors.textSecondary,
-                        ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-          Expanded(
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 200),
-              child: _showMap ? _buildMap() : _buildList(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildList() {
     final places = _filteredPlaces;
-    if (places.isEmpty) {
-      return Center(
-        key: const ValueKey('empty'),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.travel_explore_rounded,
-              size: 44,
-              color: AppColors.textTertiary,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              '조건에 맞는 장소가 없어요',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '검색어나 카테고리를 바꿔보세요',
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
-            ),
-          ],
+    return Stack(
+      key: const ValueKey('explore-map-layout'),
+      children: [
+        Positioned.fill(
+          child: _MapView(
+            key: const ValueKey('map'),
+            places: places,
+            selectedPlace: _selectedPlace,
+            onSelected: _selectPlace,
+          ),
         ),
-      );
-    }
-    return ListView.separated(
-      key: const ValueKey('list'),
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
-      itemCount: places.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 16),
-      itemBuilder: (context, index) {
-        final place = places[index];
-        return _PlaceCard(
-          place: place,
-          saved: widget.appState.isPlaceSaved(place.id),
-          onTap: () => _openPlace(place),
-          onSave: () => _togglePlace(place),
-        );
-      },
+        Positioned(
+          left: 16,
+          right: 16,
+          top: MediaQuery.paddingOf(context).top + 12,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Material(
+                      color: Colors.white,
+                      elevation: 4,
+                      shadowColor: const Color(0x260F1720),
+                      borderRadius: BorderRadius.circular(18),
+                      child: TextField(
+                        key: const ValueKey('explore-map-search'),
+                        controller: _searchController,
+                        onChanged: _updateQuery,
+                        decoration: InputDecoration(
+                          hintText: '장소, 음식, 지역을 찾아보세요',
+                          prefixIcon: const Icon(Icons.search_rounded),
+                          suffixIcon: _query.isEmpty
+                              ? null
+                              : IconButton(
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    _updateQuery('');
+                                  },
+                                  icon: const Icon(Icons.close_rounded),
+                                ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(18),
+                            borderSide: BorderSide.none,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(18),
+                            borderSide: BorderSide.none,
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(18),
+                            borderSide: const BorderSide(
+                              color: AppColors.brand,
+                              width: 1.5,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  _SavedPlacesHeaderButton(
+                    count: widget.appState.savedPlaceIds.length,
+                    onTap: () => _showSavedPlaces(context),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                height: 42,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _categories.length,
+                  separatorBuilder: (_, _) => const SizedBox(width: 8),
+                  itemBuilder: (context, index) {
+                    final category = _categories[index];
+                    return _MapCategoryChip(
+                      key: ValueKey('explore-category-${category.$1}'),
+                      label: category.$1,
+                      icon: category.$2,
+                      selected: _category == category.$1,
+                      onTap: () => _updateCategory(category.$1),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+        DraggableScrollableSheet(
+          key: const ValueKey('explore-bottom-sheet'),
+          controller: _sheetController,
+          initialChildSize: .27,
+          minChildSize: .17,
+          maxChildSize: .94,
+          snap: true,
+          snapSizes: const [.17, .5, .94],
+          builder: (context, scrollController) {
+            return Material(
+              color: Colors.white,
+              elevation: 12,
+              shadowColor: const Color(0x330F1720),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(26),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: _selectedPlace == null
+                  ? _ExplorePlaceListSheet(
+                      key: const ValueKey('explore-place-list-sheet'),
+                      controller: scrollController,
+                      places: places,
+                      onSelected: _selectPlace,
+                    )
+                  : _ExplorePlaceDetailSheet(
+                      key: ValueKey(
+                        'explore-place-detail-${_selectedPlace!.id}',
+                      ),
+                      controller: scrollController,
+                      place: _selectedPlace!,
+                      saved: widget.appState.isPlaceSaved(_selectedPlace!.id),
+                      onBack: _showPlaceList,
+                      onSave: () => _togglePlace(_selectedPlace!),
+                    ),
+            );
+          },
+        ),
+      ],
     );
   }
 
-  Widget _buildMap() {
-    final places = _filteredPlaces;
-    if (places.isEmpty) {
-      return const Center(key: ValueKey('map'), child: Text('지도에 표시할 장소가 없어요'));
-    }
-    final selectedPlace = places.any((place) => place.id == _selectedPlace.id)
-        ? _selectedPlace
-        : places.first;
-    return _MapView(
-      key: const ValueKey('map'),
-      places: places,
-      selectedPlace: selectedPlace,
-      saved: widget.appState.isPlaceSaved(selectedPlace.id),
-      onSelected: (place) => setState(() => _selectedPlace = place),
-      onDetail: _openPlace,
-      onSave: () => _togglePlace(selectedPlace),
-    );
+  void _updateQuery(String value) {
+    setState(() {
+      _query = value;
+      _selectedPlace = null;
+    });
+  }
+
+  void _updateCategory(String value) {
+    setState(() {
+      _category = value;
+      _selectedPlace = null;
+    });
+  }
+
+  void _selectPlace(Place place) {
+    setState(() => _selectedPlace = place);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_sheetController.isAttached) return;
+      final target = _sheetController.size < .34 ? .34 : _sheetController.size;
+      _sheetController.animateTo(
+        target.clamp(.17, .94),
+        duration: const Duration(milliseconds: 260),
+        curve: Curves.easeOutCubic,
+      );
+    });
+  }
+
+  void _showPlaceList() {
+    setState(() => _selectedPlace = null);
   }
 
   void _togglePlace(Place place) {
     widget.appState.togglePlace(place.id);
+    setState(() {});
     showAppSnack(
       context,
       widget.appState.isPlaceSaved(place.id)
           ? '${place.name}을 내 여행에 담았어요'
           : '${place.name}을 내 여행에서 뺐어요',
-    );
-  }
-
-  void _openPlace(Place place) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) =>
-            PlaceDetailScreen(place: place, appState: widget.appState),
-      ),
     );
   }
 
@@ -243,7 +278,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   ),
                   onTap: () {
                     Navigator.pop(context);
-                    _openPlace(saved[i]);
+                    _selectPlace(saved[i]);
                   },
                 ),
             if (saved.isNotEmpty) ...[
@@ -270,6 +305,515 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 }
 
+class _MapCategoryChip extends StatelessWidget {
+  const _MapCategoryChip({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+    super.key,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? AppColors.brand : Colors.white,
+      elevation: selected ? 3 : 2,
+      shadowColor: const Color(0x250F1720),
+      borderRadius: BorderRadius.circular(999),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 17,
+                color: selected ? Colors.white : AppColors.textSecondary,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: selected ? Colors.white : AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ExploreSheetHandle extends StatelessWidget {
+  const _ExploreSheetHandle();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        width: 42,
+        height: 5,
+        margin: const EdgeInsets.only(top: 10, bottom: 12),
+        decoration: BoxDecoration(
+          color: AppColors.line,
+          borderRadius: BorderRadius.circular(999),
+        ),
+      ),
+    );
+  }
+}
+
+class _ExplorePlaceListSheet extends StatelessWidget {
+  const _ExplorePlaceListSheet({
+    required this.controller,
+    required this.places,
+    required this.onSelected,
+    super.key,
+  });
+
+  final ScrollController controller;
+  final List<Place> places;
+  final ValueChanged<Place> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      key: const ValueKey('explore-place-list-scroll'),
+      controller: controller,
+      padding: EdgeInsets.zero,
+      children: [
+        const _ExploreSheetHandle(),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+          child: Row(
+            children: [
+              Text('주변 관광지', style: Theme.of(context).textTheme.titleLarge),
+              const Spacer(),
+              Text(
+                '${places.length}곳',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+              ),
+            ],
+          ),
+        ),
+        if (places.isEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 28, 20, 60),
+            child: Column(
+              children: [
+                const Icon(
+                  Icons.travel_explore_rounded,
+                  size: 40,
+                  color: AppColors.textTertiary,
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  '조건에 맞는 장소가 없어요',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '검색어나 태그를 바꿔보세요',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          )
+        else
+          for (final place in places)
+            _ExplorePlaceRow(place: place, onTap: () => onSelected(place)),
+        const SizedBox(height: 32),
+      ],
+    );
+  }
+}
+
+class _ExplorePlaceRow extends StatelessWidget {
+  const _ExplorePlaceRow({required this.place, required this.onTap});
+
+  final Place place;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      key: ValueKey('explore-place-row-${place.id}'),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 10, 16, 10),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: Image.asset(
+                place.image,
+                width: 78,
+                height: 74,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => const EmptyImageFallback(),
+              ),
+            ),
+            const SizedBox(width: 13),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          place.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                      ),
+                      RatingLabel(rating: place.rating),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${place.category} · 항구 ${place.fromPort}분',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 5),
+                  Row(
+                    children: [
+                      Icon(
+                        _hotSpotIcon(place),
+                        size: 15,
+                        color: _hotSpotColor(place),
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          '${_hotSpotLabel(place)} · 결제 ${_formatCount(place.paymentCount)}건',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(color: _hotSpotColor(place)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 6),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: AppColors.textTertiary,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ExplorePlaceDetailSheet extends StatelessWidget {
+  const _ExplorePlaceDetailSheet({
+    required this.controller,
+    required this.place,
+    required this.saved,
+    required this.onBack,
+    required this.onSave,
+    super.key,
+  });
+
+  final ScrollController controller;
+  final Place place;
+  final bool saved;
+  final VoidCallback onBack;
+  final VoidCallback onSave;
+
+  @override
+  Widget build(BuildContext context) {
+    final reviews = AppData.placeReviews
+        .where((review) => review.placeId == place.id)
+        .toList();
+    return ListView(
+      key: const ValueKey('explore-place-detail-scroll'),
+      controller: controller,
+      padding: EdgeInsets.zero,
+      children: [
+        const _ExploreSheetHandle(),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 14),
+          child: Row(
+            children: [
+              IconButton(
+                key: const ValueKey('explore-place-back-to-list'),
+                onPressed: onBack,
+                icon: const Icon(Icons.arrow_back_rounded),
+                tooltip: '목록으로',
+              ),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: Image.asset(
+                  place.image,
+                  width: 76,
+                  height: 72,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => const EmptyImageFallback(),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      place.category,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.labelSmall?.copyWith(color: AppColors.brand),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      place.name,
+                      key: const ValueKey('explore-selected-place-name'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        RatingLabel(rating: place.rating),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            '최근 결제 ${_formatCount(place.paymentCount)}건',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(color: _hotSpotColor(place)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                key: const ValueKey('explore-place-save'),
+                onPressed: onSave,
+                icon: Icon(
+                  saved
+                      ? Icons.favorite_rounded
+                      : Icons.favorite_border_rounded,
+                ),
+                color: saved ? AppColors.brand : AppColors.textTertiary,
+                tooltip: '내 여행에 담기',
+              ),
+            ],
+          ),
+        ),
+        const Divider(height: 1),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: Image.asset(
+              place.image,
+              height: 220,
+              width: double.infinity,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => const EmptyImageFallback(),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 22, 20, 0),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              MetaPill(
+                label: '항구 ${place.fromPort}분',
+                icon: Icons.directions_car_outlined,
+              ),
+              MetaPill(
+                label: '${place.stayTime}분',
+                icon: Icons.schedule_rounded,
+              ),
+              MetaPill(
+                label: '${place.crowd}한 편',
+                icon: Icons.groups_outlined,
+                selected: place.crowd == '여유',
+              ),
+            ],
+          ),
+        ),
+        _ExploreDetailSection(
+          title: '이곳은 어떤 곳인가요?',
+          child: Text(
+            place.description,
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
+        ),
+        if (place.benefit != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+            child: SurfaceCard(
+              color: AppColors.brandWeak,
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.credit_card_rounded,
+                      color: AppColors.brand,
+                    ),
+                  ),
+                  const SizedBox(width: 13),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '카드 혜택이 있어요',
+                          style: Theme.of(context).textTheme.labelMedium,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          place.benefit!,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        _ExploreDetailSection(
+          title: '방문 정보',
+          child: Column(
+            children: [
+              DetailInfoRow(
+                icon: Icons.schedule_outlined,
+                label: '운영시간',
+                value: place.hours,
+              ),
+              DetailInfoRow(
+                icon: Icons.location_on_outlined,
+                label: '위치',
+                value: place.location,
+              ),
+              DetailInfoRow(
+                icon: Icons.anchor_rounded,
+                label: '크루즈 항구에서',
+                value: '차로 약 ${place.fromPort}분',
+              ),
+            ],
+          ),
+        ),
+        _ExploreDetailSection(
+          title: '최근 크루즈 여행자 후기 ${reviews.length}',
+          child: Column(
+            children: [
+              if (reviews.isEmpty)
+                Text(
+                  '아직 등록된 후기가 없어요',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                )
+              else
+                for (final review in reviews)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _ExplorePlaceReview(review: review),
+                  ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 48),
+      ],
+    );
+  }
+}
+
+class _ExploreDetailSection extends StatelessWidget {
+  const _ExploreDetailSection({required this.title, required this.child});
+
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 12),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _ExplorePlaceReview extends StatelessWidget {
+  const _ExplorePlaceReview({required this.review});
+
+  final PlaceReview review;
+
+  @override
+  Widget build(BuildContext context) {
+    return SurfaceCard(
+      color: AppColors.surfaceSecondary,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              RatingLabel(rating: review.rating.toDouble()),
+              const Spacer(),
+              Text(review.date, style: Theme.of(context).textTheme.bodySmall),
+            ],
+          ),
+          const SizedBox(height: 9),
+          Text(review.content, style: Theme.of(context).textTheme.bodyMedium),
+          const SizedBox(height: 11),
+          Row(
+            children: [
+              Text(
+                countryFlag(review.country),
+                style: const TextStyle(fontSize: 17),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                '${review.country} · ${review.author}',
+                style: Theme.of(context).textTheme.labelSmall,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _SavedPlacesHeaderButton extends StatelessWidget {
   const _SavedPlacesHeaderButton({required this.count, required this.onTap});
 
@@ -281,237 +825,48 @@ class _SavedPlacesHeaderButton extends StatelessWidget {
     return Semantics(
       label: '내 여행 $count곳',
       button: true,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          RoundIconButton(
-            key: const ValueKey('explore-saved-button'),
-            icon: Icons.shopping_bag_outlined,
-            onPressed: onTap,
-            backgroundColor: AppColors.brandWeak,
-            foregroundColor: AppColors.brand,
-            tooltip: '내 여행',
-          ),
-          Positioned(
-            right: -3,
-            top: -3,
-            child: Container(
-              constraints: const BoxConstraints(minWidth: 20),
-              height: 20,
-              padding: const EdgeInsets.symmetric(horizontal: 5),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: AppColors.danger,
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: Colors.white, width: 2),
-              ),
-              child: Text(
-                '$count',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: Colors.white,
-                  fontSize: 10,
-                ),
-              ),
+      child: Container(
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Color(0x260F1720),
+              blurRadius: 12,
+              offset: Offset(0, 4),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SegmentedSwitch extends StatelessWidget {
-  const _SegmentedSwitch({required this.showMap, required this.onChanged});
-
-  final bool showMap;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 42,
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceSecondary,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        children: [
-          _Segment(
-            label: '목록',
-            selected: !showMap,
-            onTap: () => onChanged(false),
-          ),
-          _Segment(
-            label: '지도',
-            selected: showMap,
-            onTap: () => onChanged(true),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Segment extends StatelessWidget {
-  const _Segment({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Material(
-        color: selected ? Colors.white : Colors.transparent,
-        borderRadius: BorderRadius.circular(10),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(10),
-          child: Center(
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: selected
-                    ? AppColors.textPrimary
-                    : AppColors.textTertiary,
-              ),
-            ),
-          ),
+          ],
         ),
-      ),
-    );
-  }
-}
-
-class _PlaceCard extends StatelessWidget {
-  const _PlaceCard({
-    required this.place,
-    required this.saved,
-    required this.onTap,
-    required this.onSave,
-  });
-
-  final Place place;
-  final bool saved;
-  final VoidCallback onTap;
-  final VoidCallback onSave;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surfaceSecondary,
-      borderRadius: BorderRadius.circular(20),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Stack(
+          clipBehavior: Clip.none,
           children: [
-            Stack(
-              children: [
-                SizedBox(
-                  height: 186,
-                  width: double.infinity,
-                  child: Image.asset(
-                    place.image,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => const EmptyImageFallback(),
-                  ),
-                ),
-                if (place.guidePick)
-                  Positioned(
-                    left: 14,
-                    top: 14,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 7,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        '가이드 추천',
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: AppColors.brand,
-                        ),
-                      ),
-                    ),
-                  ),
-                Positioned(
-                  right: 12,
-                  top: 12,
-                  child: IconButton(
-                    onPressed: onSave,
-                    icon: Icon(
-                      saved
-                          ? Icons.favorite_rounded
-                          : Icons.favorite_border_rounded,
-                    ),
-                    color: saved ? AppColors.brand : Colors.white,
-                    style: IconButton.styleFrom(
-                      backgroundColor: saved
-                          ? Colors.white
-                          : Colors.black.withValues(alpha: 0.32),
-                    ),
-                  ),
-                ),
-              ],
+            RoundIconButton(
+              key: const ValueKey('explore-saved-button'),
+              icon: Icons.shopping_bag_outlined,
+              onPressed: onTap,
+              backgroundColor: Colors.white,
+              foregroundColor: AppColors.brand,
+              tooltip: '내 여행',
             ),
-            Padding(
-              padding: const EdgeInsets.all(17),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    place.category,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.labelSmall?.copyWith(color: AppColors.brand),
+            Positioned(
+              right: -3,
+              top: -3,
+              child: Container(
+                constraints: const BoxConstraints(minWidth: 20),
+                height: 20,
+                padding: const EdgeInsets.symmetric(horizontal: 5),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: AppColors.danger,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: Colors.white, width: 2),
+                ),
+                child: Text(
+                  '$count',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: Colors.white,
+                    fontSize: 10,
                   ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          place.name,
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                      ),
-                      RatingLabel(rating: place.rating),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 7,
-                    runSpacing: 7,
-                    children: [
-                      MetaPill(
-                        label: '항구 ${place.fromPort}분',
-                        icon: Icons.directions_car_outlined,
-                        compact: true,
-                      ),
-                      MetaPill(
-                        label: '${place.stayTime}분',
-                        icon: Icons.schedule_rounded,
-                        compact: true,
-                      ),
-                      MetaPill(
-                        label: place.crowd,
-                        icon: Icons.groups_outlined,
-                        selected: place.crowd == '여유',
-                        compact: true,
-                      ),
-                    ],
-                  ),
-                ],
+                ),
               ),
             ),
           ],
@@ -525,19 +880,13 @@ class _MapView extends StatefulWidget {
   const _MapView({
     required this.places,
     required this.selectedPlace,
-    required this.saved,
     required this.onSelected,
-    required this.onDetail,
-    required this.onSave,
     super.key,
   });
 
   final List<Place> places;
-  final Place selectedPlace;
-  final bool saved;
+  final Place? selectedPlace;
   final ValueChanged<Place> onSelected;
-  final ValueChanged<Place> onDetail;
-  final VoidCallback onSave;
 
   static const _positions = [
     Alignment(-0.68, -0.25),
@@ -553,7 +902,6 @@ class _MapView extends StatefulWidget {
 
 class _MapViewState extends State<_MapView> {
   final TransformationController _mapController = TransformationController();
-  bool _previewVisible = false;
   double _mapScale = 1;
 
   @override
@@ -592,122 +940,98 @@ class _MapViewState extends State<_MapView> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: LayoutBuilder(
-          builder: (context, constraints) => Stack(
-            children: [
-              Positioned.fill(
-                child: InteractiveViewer(
-                  transformationController: _mapController,
-                  minScale: .8,
-                  maxScale: 3,
-                  boundaryMargin: const EdgeInsets.all(180),
-                  panEnabled: true,
-                  scaleEnabled: true,
-                  child: SizedBox(
-                    width: constraints.maxWidth,
-                    height: constraints.maxHeight,
-                    child: Stack(
-                      children: [
-                        Positioned.fill(
-                          child: CustomPaint(painter: _MapPainter()),
-                        ),
-                        Align(
-                          alignment: Alignment(-0.38, -0.48),
-                          child: _FixedMapMarkerScale(
-                            scale: _mapScale,
-                            child: const _CruisePortMarker(
-                              label: '제주항',
-                              city: '제주시',
-                            ),
-                          ),
-                        ),
-                        Align(
-                          alignment: Alignment(-0.08, 0.42),
-                          child: _FixedMapMarkerScale(
-                            scale: _mapScale,
-                            child: const _CruisePortMarker(
-                              label: '강정항',
-                              city: '서귀포',
-                            ),
-                          ),
-                        ),
-                        for (var i = 0; i < widget.places.length; i++)
-                          Align(
-                            alignment: _MapView
-                                ._positions[i % _MapView._positions.length],
-                            child: _FixedMapMarkerScale(
-                              key: ValueKey(
-                                'fixed-map-marker-${widget.places[i].id}',
-                              ),
-                              transformKey: ValueKey(
-                                'fixed-map-marker-transform-${widget.places[i].id}',
-                              ),
-                              scale: _mapScale,
-                              child: _MapPhotoMarker(
-                                place: widget.places[i],
-                                selected:
-                                    widget.places[i].id ==
-                                    widget.selectedPlace.id,
-                                onTap: () {
-                                  widget.onSelected(widget.places[i]);
-                                  setState(() => _previewVisible = true);
-                                },
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const Positioned(left: 14, top: 14, child: _MapHotLegend()),
-              Positioned(
-                right: 14,
-                top: 14,
-                child: Column(
+    return LayoutBuilder(
+      builder: (context, constraints) => Stack(
+        children: [
+          Positioned.fill(
+            child: InteractiveViewer(
+              transformationController: _mapController,
+              minScale: .8,
+              maxScale: 3,
+              boundaryMargin: const EdgeInsets.all(180),
+              panEnabled: true,
+              scaleEnabled: true,
+              child: SizedBox(
+                width: constraints.maxWidth,
+                height: constraints.maxHeight,
+                child: Stack(
                   children: [
-                    _MapControl(
-                      key: const ValueKey('map-zoom-in'),
-                      icon: Icons.add_rounded,
-                      tooltip: '지도 확대',
-                      onTap: () => _zoom(1.35),
+                    Positioned.fill(child: CustomPaint(painter: _MapPainter())),
+                    Align(
+                      alignment: const Alignment(-0.38, -0.48),
+                      child: _FixedMapMarkerScale(
+                        scale: _mapScale,
+                        child: const _CruisePortMarker(
+                          label: '제주항',
+                          city: '제주시',
+                        ),
+                      ),
                     ),
-                    SizedBox(height: 9),
-                    _MapControl(
-                      key: const ValueKey('map-zoom-out'),
-                      icon: Icons.remove_rounded,
-                      tooltip: '지도 축소',
-                      onTap: () => _zoom(1 / 1.35),
+                    Align(
+                      alignment: const Alignment(-0.08, 0.42),
+                      child: _FixedMapMarkerScale(
+                        scale: _mapScale,
+                        child: const _CruisePortMarker(
+                          label: '강정항',
+                          city: '서귀포',
+                        ),
+                      ),
                     ),
-                    const SizedBox(height: 9),
-                    _MapControl(
-                      key: const ValueKey('map-reset-position'),
-                      icon: Icons.center_focus_strong_rounded,
-                      tooltip: '지도 위치 초기화',
-                      onTap: _resetMap,
-                    ),
+                    for (var i = 0; i < widget.places.length; i++)
+                      Align(
+                        alignment:
+                            _MapView._positions[i % _MapView._positions.length],
+                        child: _FixedMapMarkerScale(
+                          key: ValueKey(
+                            'fixed-map-marker-${widget.places[i].id}',
+                          ),
+                          transformKey: ValueKey(
+                            'fixed-map-marker-transform-${widget.places[i].id}',
+                          ),
+                          scale: _mapScale,
+                          child: _MapPhotoMarker(
+                            place: widget.places[i],
+                            selected:
+                                widget.places[i].id == widget.selectedPlace?.id,
+                            onTap: () => widget.onSelected(widget.places[i]),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
-              if (_previewVisible)
-                Positioned(
-                  left: 12,
-                  right: 12,
-                  bottom: 12,
-                  child: _MapPlacePreview(
-                    place: widget.selectedPlace,
-                    saved: widget.saved,
-                    onTap: () => widget.onDetail(widget.selectedPlace),
-                    onSave: widget.onSave,
-                  ),
-                ),
-            ],
+            ),
           ),
-        ),
+          const Positioned(left: 14, top: 142, child: _MapHotLegend()),
+          Positioned(
+            right: 14,
+            top: 142,
+            child: Column(
+              children: [
+                _MapControl(
+                  key: const ValueKey('map-zoom-in'),
+                  icon: Icons.add_rounded,
+                  tooltip: '지도 확대',
+                  onTap: () => _zoom(1.35),
+                ),
+                const SizedBox(height: 9),
+                _MapControl(
+                  key: const ValueKey('map-zoom-out'),
+                  icon: Icons.remove_rounded,
+                  tooltip: '지도 축소',
+                  onTap: () => _zoom(1 / 1.35),
+                ),
+                const SizedBox(height: 9),
+                _MapControl(
+                  key: const ValueKey('map-reset-position'),
+                  icon: Icons.center_focus_strong_rounded,
+                  tooltip: '지도 위치 초기화',
+                  onTap: _resetMap,
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -959,99 +1283,6 @@ class _MapPhotoMarker extends StatelessWidget {
                 ),
               ],
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _MapPlacePreview extends StatelessWidget {
-  const _MapPlacePreview({
-    required this.place,
-    required this.saved,
-    required this.onTap,
-    required this.onSave,
-  });
-
-  final Place place;
-  final bool saved;
-  final VoidCallback onTap;
-  final VoidCallback onSave;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      key: const ValueKey('map-place-preview'),
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(18),
-      clipBehavior: Clip.antiAlias,
-      elevation: 3,
-      shadowColor: Colors.black26,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(10),
-          child: Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.asset(
-                  place.image,
-                  width: 78,
-                  height: 72,
-                  fit: BoxFit.cover,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      place.name,
-                      style: Theme.of(context).textTheme.titleSmall,
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      '항구 ${place.fromPort}분 · ${place.stayTime}분 머물러요',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        RatingLabel(rating: place.rating),
-                        const SizedBox(width: 8),
-                        Icon(
-                          _hotSpotIcon(place),
-                          size: 15,
-                          color: _hotSpotColor(place),
-                        ),
-                        const SizedBox(width: 3),
-                        Flexible(
-                          child: Text(
-                            '최근 결제 ${_formatCount(place.paymentCount)}건',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(color: _hotSpotColor(place)),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              IconButton(
-                onPressed: onSave,
-                icon: Icon(
-                  saved
-                      ? Icons.favorite_rounded
-                      : Icons.favorite_border_rounded,
-                ),
-                color: saved ? AppColors.brand : AppColors.textTertiary,
-              ),
-            ],
           ),
         ),
       ),
