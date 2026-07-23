@@ -24,6 +24,31 @@ flutter run
 flutter build web --release
 ```
 
+## Vercel 배포
+
+Vercel은 저장소 루트의 `vercel.json`을 읽고 `public/` 폴더에 있는
+Flutter Web 정적 번들을 배포합니다. 프로젝트를 Vercel에 연결할 때
+Root Directory는 저장소 루트(`.`), Framework Preset은 `Other`로 설정합니다.
+Build Command와 Output Directory는 `vercel.json`에 이미 정의되어 있습니다.
+
+소스나 이미지가 변경되면 푸시하기 전에 다음 명령으로 배포 번들을 갱신합니다.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\prepare_vercel.ps1
+```
+
+배포 관련 폴더 구조는 다음과 같습니다.
+
+```text
+crujeju/
+├─ lib/                       # Flutter 앱 소스
+├─ assets/                    # 원본 이미지
+├─ web/                       # Flutter Web 원본 템플릿
+├─ public/                    # Vercel이 제공하는 빌드 결과물
+├─ scripts/prepare_vercel.ps1 # public 갱신 스크립트
+└─ vercel.json                # Vercel 빌드·라우팅 설정
+```
+
 ## 검증
 
 ```bash
