@@ -14,17 +14,35 @@ class JejuCruiseApp extends StatefulWidget {
   State<JejuCruiseApp> createState() => _JejuCruiseAppState();
 }
 
-class _JejuCruiseAppState extends State<JejuCruiseApp> {
+class _JejuCruiseAppState extends State<JejuCruiseApp>
+    with WidgetsBindingObserver {
   final AppState _appState = AppState();
+  bool _keyboardWasVisible = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _appState.initialize();
   }
 
   @override
+  void didChangeMetrics() {
+    final views = WidgetsBinding.instance.platformDispatcher.views;
+    final keyboardVisible =
+        views.isNotEmpty && views.first.viewInsets.bottom > 0;
+    if (!keyboardVisible && _keyboardWasVisible) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        FocusManager.instance.primaryFocus?.unfocus();
+        SystemChannels.textInput.invokeMethod<void>('TextInput.hide');
+      });
+    }
+    _keyboardWasVisible = keyboardVisible;
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _appState.dispose();
     super.dispose();
   }

@@ -69,6 +69,9 @@
       let previousViewportHeight =
         Math.round(viewport?.height ?? window.innerHeight);
       let resizeFrame = 0;
+      let keyboardMonitor = 0;
+      let keyboardWasOpen = false;
+      let recoveryToken = 0;
 
       const currentViewportHeight = () =>
         Math.round(viewport?.height ?? window.innerHeight);
@@ -100,37 +103,108 @@
         });
       };
 
-      viewport?.addEventListener('resize', () => {
+      const deepActiveElement = () => {
+        let active = document.activeElement;
+        while (active?.shadowRoot?.activeElement) {
+          active = active.shadowRoot.activeElement;
+        }
+        return active;
+      };
+
+      const isEditableElement = (element) =>
+        element instanceof HTMLInputElement ||
+        element instanceof HTMLTextAreaElement ||
+        element?.isContentEditable ||
+        element?.classList?.contains('flt-text-editing');
+
+      const blurActiveEditor = () => {
+        const active = deepActiveElement();
+        if (isEditableElement(active) && typeof active.blur === 'function') {
+          active.blur();
+        }
+      };
+
+      const stopKeyboardMonitor = () => {
+        if (keyboardMonitor) {
+          window.clearInterval(keyboardMonitor);
+          keyboardMonitor = 0;
+        }
+      };
+
+      const recoverFromKeyboardClose = () => {
+        const token = ++recoveryToken;
+        keyboardWasOpen = false;
+        stopKeyboardMonitor();
+        blurActiveEditor();
+
+        [0, 80, 180, 320].forEach((delay) => {
+          window.setTimeout(() => {
+            if (token !== recoveryToken) return;
+            blurActiveEditor();
+            const restoredHeight = Math.max(
+              currentViewportHeight(),
+              heightBeforeKeyboard,
+            );
+            applyViewportHeight(restoredHeight);
+            window.dispatchEvent(new Event('resize'));
+            if (delay === 320) {
+              heightBeforeKeyboard = 0;
+            }
+          }, delay);
+        });
+      };
+
+      const startKeyboardMonitor = () => {
+        stopKeyboardMonitor();
+        keyboardMonitor = window.setInterval(() => {
+          if (!keyboardWasOpen || heightBeforeKeyboard <= 0) return;
+          if (currentViewportHeight() >= heightBeforeKeyboard - 40) {
+            recoverFromKeyboardClose();
+          }
+        }, 100);
+      };
+
+      const handleViewportResize = () => {
         const nextViewportHeight = currentViewportHeight();
+        const keyboardOpened =
+          nextViewportHeight < previousViewportHeight - 80;
         const keyboardClosed =
           nextViewportHeight > previousViewportHeight + 80;
 
-        scheduleViewportSync(keyboardClosed);
-
-        if (keyboardClosed) {
-          [80, 180, 320].forEach((delay) => {
-            window.setTimeout(notifyFlutterOfResize, delay);
-          });
+        if (keyboardOpened) {
+          recoveryToken++;
+          heightBeforeKeyboard = Math.max(
+            heightBeforeKeyboard,
+            previousViewportHeight,
+          );
+          keyboardWasOpen = true;
+          startKeyboardMonitor();
+          scheduleViewportSync();
+        } else if (keyboardClosed && keyboardWasOpen) {
+          recoverFromKeyboardClose();
+        } else {
+          scheduleViewportSync();
         }
 
         previousViewportHeight = nextViewportHeight;
-      });
+      };
 
-      window.addEventListener('resize', () => {
-        scheduleViewportSync();
-      });
+      viewport?.addEventListener('resize', handleViewportResize);
+      window.addEventListener('resize', handleViewportResize);
 
       document.addEventListener(
         'focusin',
-        (event) => {
-          const target = event.target;
-          if (
-            target instanceof HTMLInputElement ||
-            target instanceof HTMLTextAreaElement ||
-            target?.isContentEditable
-          ) {
-            heightBeforeKeyboard = currentViewportHeight();
-          }
+        () => {
+          requestAnimationFrame(() => {
+            const active = deepActiveElement();
+            if (!isEditableElement(active)) return;
+            recoveryToken++;
+            heightBeforeKeyboard = Math.max(
+              heightBeforeKeyboard,
+              currentViewportHeight(),
+            );
+            startKeyboardMonitor();
+          });
         },
         true,
       );
@@ -138,26 +212,39 @@
       document.addEventListener(
         'focusout',
         () => {
-          [80, 180, 320].forEach((delay) => {
-            window.setTimeout(() => {
-              const restoredHeight = Math.max(
-                currentViewportHeight(),
-                heightBeforeKeyboard,
-              );
-              applyViewportHeight(restoredHeight);
-              window.dispatchEvent(new Event('resize'));
-            }, delay);
-          });
+          window.setTimeout(recoverFromKeyboardClose, 60);
         },
         true,
       );
 
+      navigator.virtualKeyboard?.addEventListener('geometrychange', () => {
+        const keyboardHeight =
+          navigator.virtualKeyboard?.boundingRect?.height ?? 0;
+        if (keyboardHeight > 80) {
+          recoveryToken++;
+          heightBeforeKeyboard = Math.max(
+            heightBeforeKeyboard,
+            currentViewportHeight() + keyboardHeight,
+          );
+          keyboardWasOpen = true;
+          startKeyboardMonitor();
+        } else if (keyboardWasOpen) {
+          recoverFromKeyboardClose();
+        }
+      });
+
       window.addEventListener('orientationchange', () => {
+        recoveryToken++;
+        keyboardWasOpen = false;
+        stopKeyboardMonitor();
         heightBeforeKeyboard = 0;
         window.setTimeout(notifyFlutterOfResize, 200);
       });
 
       window.addEventListener('pageshow', () => {
+        recoveryToken++;
+        keyboardWasOpen = false;
+        stopKeyboardMonitor();
         heightBeforeKeyboard = 0;
         notifyFlutterOfResize();
       });
