@@ -16,13 +16,51 @@ class MessagesScreen extends StatefulWidget {
   State<MessagesScreen> createState() => _MessagesScreenState();
 }
 
-class _MessagesScreenState extends State<MessagesScreen> {
+class _MessagesScreenState extends State<MessagesScreen>
+    with WidgetsBindingObserver {
+  final FocusNode _searchFocusNode = FocusNode();
+  final ScrollController _conversationScrollController = ScrollController();
   String _query = '';
+  bool _keyboardWasVisible = false;
+  double? _conversationOffsetBeforeKeyboard;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _searchFocusNode.addListener(_handleSearchFocus);
+  }
+
+  @override
+  void didChangeMetrics() {
+    if (!mounted || (!_searchFocusNode.hasFocus && !_keyboardWasVisible)) {
+      return;
+    }
+    final keyboardVisible = View.of(context).viewInsets.bottom > 0;
+    if (keyboardVisible && !_keyboardWasVisible) {
+      _captureConversationScrollPosition();
+    } else if (!keyboardVisible && _keyboardWasVisible) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _restoreConversationScrollPosition();
+      });
+    }
+    _keyboardWasVisible = keyboardVisible;
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _searchFocusNode.removeListener(_handleSearchFocus);
+    _searchFocusNode.dispose();
+    _conversationScrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.surfaceSecondary,
+      resizeToAvoidBottomInset: false,
       body: AppPage(
         child: SafeArea(
           child: AnimatedBuilder(
@@ -54,7 +92,11 @@ class _MessagesScreenState extends State<MessagesScreen> {
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
                     child: TextField(
                       key: const ValueKey('message-search'),
+                      focusNode: _searchFocusNode,
                       onChanged: (value) => setState(() => _query = value),
+                      onSubmitted: (_) => _searchFocusNode.unfocus(),
+                      onTapOutside: (_) => _searchFocusNode.unfocus(),
+                      textInputAction: TextInputAction.search,
                       decoration: const InputDecoration(
                         hintText: '가이드 이름 검색',
                         prefixIcon: Icon(Icons.search_rounded),
@@ -65,6 +107,9 @@ class _MessagesScreenState extends State<MessagesScreen> {
                     child: guides.isEmpty
                         ? _MessageEmptyState(hasQuery: _query.isNotEmpty)
                         : ListView.separated(
+                            controller: _conversationScrollController,
+                            keyboardDismissBehavior:
+                                ScrollViewKeyboardDismissBehavior.onDrag,
                             padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
                             itemCount: guides.length,
                             separatorBuilder: (_, _) =>
@@ -91,6 +136,39 @@ class _MessagesScreenState extends State<MessagesScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  void _handleSearchFocus() {
+    if (_searchFocusNode.hasFocus) {
+      _captureConversationScrollPosition();
+    } else if (!_keyboardWasVisible) {
+      _conversationOffsetBeforeKeyboard = null;
+    }
+  }
+
+  void _captureConversationScrollPosition() {
+    if (!_conversationScrollController.hasClients) return;
+    _conversationOffsetBeforeKeyboard ??= _conversationScrollController.offset;
+  }
+
+  void _restoreConversationScrollPosition() {
+    if (!mounted) return;
+    final previousOffset = _conversationOffsetBeforeKeyboard;
+    _conversationOffsetBeforeKeyboard = null;
+    _searchFocusNode.unfocus();
+    if (previousOffset == null || !_conversationScrollController.hasClients) {
+      return;
+    }
+    final position = _conversationScrollController.position;
+    final target = previousOffset
+        .clamp(position.minScrollExtent, position.maxScrollExtent)
+        .toDouble();
+    if ((_conversationScrollController.offset - target).abs() < .5) return;
+    _conversationScrollController.animateTo(
+      target,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
     );
   }
 

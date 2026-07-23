@@ -64,7 +64,7 @@ class _MainShellState extends State<MainShell> {
                 (guide) => guide.id == activeBooking.guideId,
               );
         return Scaffold(
-          resizeToAvoidBottomInset: _index != 2,
+          resizeToAvoidBottomInset: _index != 1 && _index != 2,
           body: AppPage(
             child: IndexedStack(
               index: _index,

@@ -22,17 +22,49 @@ class GuidesScreen extends StatefulWidget {
   State<GuidesScreen> createState() => _GuidesScreenState();
 }
 
-class _GuidesScreenState extends State<GuidesScreen> {
+class _GuidesScreenState extends State<GuidesScreen>
+    with WidgetsBindingObserver {
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
+  final ScrollController _guideScrollController = ScrollController();
   String _query = '';
   String _filter = '추천순';
   final Set<String> _selectedLanguages = {};
   final Set<String> _selectedTransports = {};
   final Set<String> _selectedStyles = {};
+  bool _keyboardWasVisible = false;
+  double? _guideOffsetBeforeKeyboard;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _searchFocusNode.addListener(_handleSearchFocus);
+  }
+
+  @override
+  void didChangeMetrics() {
+    if (!mounted || (!_searchFocusNode.hasFocus && !_keyboardWasVisible)) {
+      return;
+    }
+    final keyboardVisible = View.of(context).viewInsets.bottom > 0;
+    if (keyboardVisible && !_keyboardWasVisible) {
+      _captureGuideScrollPosition();
+    } else if (!keyboardVisible && _keyboardWasVisible) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _restoreGuideScrollPosition();
+      });
+    }
+    _keyboardWasVisible = keyboardVisible;
+  }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _searchFocusNode.removeListener(_handleSearchFocus);
     _searchController.dispose();
+    _searchFocusNode.dispose();
+    _guideScrollController.dispose();
     super.dispose();
   }
 
@@ -93,7 +125,11 @@ class _GuidesScreenState extends State<GuidesScreen> {
             child: TextField(
               key: const ValueKey('guide-search'),
               controller: _searchController,
+              focusNode: _searchFocusNode,
               onChanged: (value) => setState(() => _query = value),
+              onSubmitted: (_) => _searchFocusNode.unfocus(),
+              onTapOutside: (_) => _searchFocusNode.unfocus(),
+              textInputAction: TextInputAction.search,
               decoration: InputDecoration(
                 hintText: '이름, 언어, 여행 스타일로 찾아보세요',
                 prefixIcon: const Icon(Icons.search_rounded),
@@ -166,6 +202,8 @@ class _GuidesScreenState extends State<GuidesScreen> {
           Expanded(
             child: CustomScrollView(
               key: const PageStorageKey('guides-scroll'),
+              controller: _guideScrollController,
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               slivers: [
                 if (widget.appState.selectedGuideId != null)
                   SliverToBoxAdapter(
@@ -217,6 +255,37 @@ class _GuidesScreenState extends State<GuidesScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  void _handleSearchFocus() {
+    if (_searchFocusNode.hasFocus) {
+      _captureGuideScrollPosition();
+    } else if (!_keyboardWasVisible) {
+      _guideOffsetBeforeKeyboard = null;
+    }
+  }
+
+  void _captureGuideScrollPosition() {
+    if (!_guideScrollController.hasClients) return;
+    _guideOffsetBeforeKeyboard ??= _guideScrollController.offset;
+  }
+
+  void _restoreGuideScrollPosition() {
+    if (!mounted) return;
+    final previousOffset = _guideOffsetBeforeKeyboard;
+    _guideOffsetBeforeKeyboard = null;
+    _searchFocusNode.unfocus();
+    if (previousOffset == null || !_guideScrollController.hasClients) return;
+    final position = _guideScrollController.position;
+    final target = previousOffset
+        .clamp(position.minScrollExtent, position.maxScrollExtent)
+        .toDouble();
+    if ((_guideScrollController.offset - target).abs() < .5) return;
+    _guideScrollController.animateTo(
+      target,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
     );
   }
 

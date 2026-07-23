@@ -380,6 +380,51 @@ void main() {
     expect(find.text('언어 · 2개'), findsOneWidget);
   });
 
+  testWidgets('가이드 검색 키보드를 닫으면 목록 위치가 원래대로 돌아온다', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    addTearDown(tester.view.resetViewInsets);
+    final appState = AppState();
+    addTearDown(appState.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: MainShell(appState: appState),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('bottom-tab-1')));
+    await tester.pumpAndSettle();
+
+    final search = find.byKey(const ValueKey('guide-search'));
+    final results = find.byKey(const PageStorageKey('guides-scroll'));
+    final initialSearchTop = tester.getTopLeft(search).dy;
+    final scrollable = find.descendant(
+      of: results,
+      matching: find.byType(Scrollable),
+    );
+    final position = tester.state<ScrollableState>(scrollable).position;
+    final initialOffset = position.pixels;
+
+    await tester.tap(search);
+    await tester.pump();
+    tester.view.viewInsets = const FakeViewPadding(bottom: 360);
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(search).dy, closeTo(initialSearchTop, 1));
+
+    await tester.drag(results, const Offset(0, -220));
+    await tester.pumpAndSettle();
+    expect(position.pixels, greaterThan(initialOffset + 20));
+
+    tester.view.viewInsets = FakeViewPadding.zero;
+    await tester.pumpAndSettle();
+
+    expect(tester.getTopLeft(search).dy, closeTo(initialSearchTop, 1));
+    expect(position.pixels, closeTo(initialOffset, 1));
+    expect(tester.widget<TextField>(search).focusNode?.hasFocus, isFalse);
+  });
+
   testWidgets('김덕춘 가이드 프로필과 시원시원한 여행 스타일을 보여준다', (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -774,6 +819,7 @@ void main() {
   testWidgets('가이드 탭 메시지 목록에서 대화를 열고 메시지를 보낸다', (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
+    addTearDown(tester.view.resetViewInsets);
     final appState = AppState();
     addTearDown(appState.dispose);
     await tester.pumpWidget(
@@ -795,6 +841,20 @@ void main() {
     expect(find.byKey(const ValueKey('message-thread-mina')), findsNothing);
     expect(find.byKey(const ValueKey('message-thread-jason')), findsNothing);
     expect(appState.hasGuideConversation('mina'), isFalse);
+
+    final messageSearch = find.byKey(const ValueKey('message-search'));
+    final initialSearchTop = tester.getTopLeft(messageSearch).dy;
+    await tester.tap(messageSearch);
+    await tester.pump();
+    tester.view.viewInsets = const FakeViewPadding(bottom: 360);
+    await tester.pumpAndSettle();
+    tester.view.viewInsets = FakeViewPadding.zero;
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(messageSearch).dy, closeTo(initialSearchTop, 1));
+    expect(
+      tester.widget<TextField>(messageSearch).focusNode?.hasFocus,
+      isFalse,
+    );
 
     appState.sendGuideMessage('mina', '항구에서 바로 만날 수 있나요?');
     appState.addGuideReply('mina', '네, 입항 시간에 맞춰 기다릴게요.');
